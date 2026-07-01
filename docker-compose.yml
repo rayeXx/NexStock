@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # Laravel Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexstock-app
+    container_name: nexstock-app-container
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    volumes:
+      - .:/var/www
+    networks:
+      - nexstock-network
+
+  # Nginx Web Server Service
+  webserver:
+    image: nginx:alpine
+    container_name: nexstock-webserver-container
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx:/etc/nginx/conf.d/
+    networks:
+      - nexstock-network
+    depends_on:
+      - app
+
+  # MySQL Database Service
+  db:
+    image: mysql:8.0
+    container_name: nexstock-db-container
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: nexstock
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: password
+      MYSQL_USER: nexstock_user
+    volumes:
+      - nexstock-db-data:/var/lib/mysql
+    networks:
+      - nexstock-network
+
+# Networks
+networks:
+  nexstock-network:
+    driver: bridge
+
+# Volumes
+volumes:
+  nexstock-db-data:
+    driver: local
