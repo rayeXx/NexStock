@@ -61,20 +61,24 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('supplier', SupplierController::class)->except(['show']);
         Route::resource('rack', RackController::class)->except(['show']);
 
-        // Procurement PO Creator
+        // Procurement PO (View)
         Route::prefix('po')->name('po.')->group(function () {
             Route::get('/', [PurchaseOrderController::class, 'index'])->name('index');
-            Route::get('/create', [PurchaseOrderController::class, 'create'])->name('create');
-            Route::post('/store', [PurchaseOrderController::class, 'store'])->name('store');
             Route::get('/{id}', [PurchaseOrderController::class, 'show'])->name('show');
-            Route::post('/{id}/submit', [PurchaseOrderController::class, 'submit'])->name('submit');
-            Route::delete('/{id}', [PurchaseOrderController::class, 'destroy'])->name('destroy');
         });
     });
 
-    // 3. User Management (Admin only)
+    // 3. User Management & PO Creation (Admin only)
     Route::middleware(['role:admin_gudang'])->group(function () {
         Route::resource('user', UserController::class)->except(['show']);
+
+        // PO Management
+        Route::prefix('po')->name('po.')->group(function () {
+            Route::get('/draft/create', [PurchaseOrderController::class, 'create'])->name('create'); // changed url to /draft/create to avoid {id} conflict
+            Route::post('/store', [PurchaseOrderController::class, 'store'])->name('store');
+            Route::post('/{id}/submit', [PurchaseOrderController::class, 'submit'])->name('submit');
+            Route::delete('/{id}', [PurchaseOrderController::class, 'destroy'])->name('destroy');
+        });
     });
 
     // 4. Approvals (Owner only)

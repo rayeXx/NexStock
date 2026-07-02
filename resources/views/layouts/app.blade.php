@@ -9,6 +9,42 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Dark theme overrides for Select2 to match NexStock */
+        .select2-container--default .select2-selection--single {
+            background-color: #1a2332;
+            border: 1px solid #2d3748;
+            border-radius: 8px;
+            height: 42px;
+            color: #e2e8f0;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #e2e8f0;
+            line-height: 40px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+        }
+        .select2-dropdown {
+            background-color: #1a2332;
+            border: 1px solid #2d3748;
+        }
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            background-color: #0f172a;
+            border: 1px solid #2d3748;
+            color: #e2e8f0;
+        }
+        .select2-container--default .select2-results__option--selected {
+            background-color: #2d3748;
+        }
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background-color: #38bdf8;
+            color: white;
+        }
+    </style>
 </head>
 <body>
     <div class="app-layout">
@@ -131,7 +167,7 @@
                             <line x1="16" y1="13" x2="8" y2="13"></line>
                             <line x1="16" y1="17" x2="8" y2="17"></line>
                         </svg>
-                        <span>Daftar PO</span>
+                        <span>{{ auth()->user()->role === 'owner' ? 'Persetujuan PO' : 'Daftar PO' }}</span>
                     </a>
 
                     <a href="{{ route('product.index') }}" class="sidebar-nav-link {{ request()->routeIs('product.*') ? 'active' : '' }}">
@@ -292,6 +328,17 @@
                     sidebar.classList.remove('show');
                 }
             }
+        });
+    </script>
+    
+    <!-- jQuery and Select2 JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.select2').select2({
+                width: '100%',
+            });
         });
     </script>
 </body>

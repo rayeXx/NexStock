@@ -13,13 +13,20 @@
 
             <div class="form-group">
                 <label class="form-label" for="batch_number">Pilih No. Batch yang Rusak *</label>
-                <select name="batch_number" id="batch_number" class="form-control" required>
+                <select name="batch_number" id="batch_number" class="form-control select2" required>
                     <option value="" disabled selected>-- Pilih Batch Aktif dari Rak --</option>
                     @foreach($activeBatches as $batch)
                         <option value="{{ $batch->batch_number }}">
                             {{ $batch->product->nama_produk }} | Batch: {{ $batch->batch_number }} | Rak: {{ $batch->rak_id }} | Sisa: {{ $batch->stok_sisa_batch }} | Exp: {{ $batch->expired_date->format('d M Y') }}
                         </option>
                     @endforeach
+                    <!-- DUMMY DATA UNTUK TESTING -->
+                    <option value="BATCH-DUMMY-001">
+                        Dummy Produk A | Batch: BATCH-DUMMY-001 | Rak: 1 | Sisa: 100 | Exp: 31 Dec 2026
+                    </option>
+                    <option value="BATCH-DUMMY-002">
+                        Dummy Produk B | Batch: BATCH-DUMMY-002 | Rak: 2 | Sisa: 50 | Exp: 31 Dec 2026
+                    </option>
                 </select>
             </div>
 

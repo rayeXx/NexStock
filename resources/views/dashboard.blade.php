@@ -50,6 +50,22 @@
         </div>
     </div>
 
+    <!-- Sales Chart (Owner Only) -->
+    @if($userRole === 'owner')
+    <div class="glass-card" style="margin-bottom: 1.5rem;">
+        <div class="card-title">
+            <span>Grafik Penjualan (Barang Keluar)</span>
+            <select id="chartPeriodFilter" class="form-control" style="width: auto; min-width: 160px; padding: 8px 36px 8px 12px; font-size: 0.85rem; min-height: 36px;">
+                <option value="month" selected>Bulan Ini</option>
+                <option value="week">Minggu Ini</option>
+            </select>
+        </div>
+        <div style="height: 320px; width: 100%;">
+            <canvas id="salesChart"></canvas>
+        </div>
+    </div>
+    @endif
+
     <!-- Main Analytics Grid -->
     <div class="grid-2">
         
@@ -211,4 +227,90 @@
             </div>
         </div>
     </div>
+    @if($userRole === 'owner')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+
+            const chartDataSets = {
+                month: {
+                    labels: {!! json_encode($chartMonthLabels) !!},
+                    data: {!! json_encode($chartMonthData) !!}
+                },
+                week: {
+                    labels: {!! json_encode($chartWeekLabels) !!},
+                    data: {!! json_encode($chartWeekData) !!}
+                }
+            };
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
+            gradient.addColorStop(1, 'rgba(56, 189, 248, 0.02)');
+
+            let salesChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartDataSets.month.labels,
+                    datasets: [{
+                        label: 'Total Qty Terjual',
+                        data: chartDataSets.month.data,
+                        backgroundColor: gradient,
+                        borderColor: '#38bdf8',
+                        borderWidth: 1.5,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                        hoverBackgroundColor: 'rgba(56, 189, 248, 0.6)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#9ca3af',
+                                font: { family: 'Outfit', size: 13 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#94a3b8',
+                            borderColor: 'rgba(56, 189, 248, 0.3)',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, color: '#64748b', font: { family: 'Outfit' } },
+                            grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }
+                        },
+                        x: {
+                            ticks: { color: '#64748b', font: { family: 'Outfit', size: 11 }, maxRotation: 45, minRotation: 0 },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // Period filter switching
+            document.getElementById('chartPeriodFilter').addEventListener('change', function() {
+                const period = this.value;
+                const dataset = chartDataSets[period];
+
+                salesChart.data.labels = dataset.labels;
+                salesChart.data.datasets[0].data = dataset.data;
+                salesChart.update('active');
+            });
+        });
+    </script>
+    @endif
 </x-app-layout>

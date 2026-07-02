@@ -13,13 +13,16 @@
 
             <div class="form-group">
                 <label class="form-label" for="supplier_id">Pilih Supplier *</label>
-                <select name="supplier_id" id="supplier_id" class="form-control" required>
+                <select name="supplier_id" id="supplier_id" class="form-control select2" required>
                     <option value="" disabled selected>-- Pilih Mitra Supplier --</option>
                     @foreach($suppliers as $supplier)
                         <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
                             {{ $supplier->nama_supplier }} ({{ $supplier->kontak }})
                         </option>
                     @endforeach
+                    <!-- DUMMY DATA UNTUK TESTING -->
+                    <option value="999">PT Dummy Supplier A (08123456789)</option>
+                    <option value="998">CV Dummy Makmur (08987654321)</option>
                 </select>
             </div>
 
@@ -36,11 +39,14 @@
                         <div class="grid-2" style="gap: 0.75rem;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label">Produk *</label>
-                                <select name="items[0][produk_id]" class="form-control" required>
+                                <select name="items[0][produk_id]" class="form-control select2" required>
                                     <option value="" disabled selected>-- Pilih Produk --</option>
                                     @foreach($products as $product)
                                         <option value="{{ $product->kode_produk }}">{{ $product->nama_produk }} ({{ $product->kode_produk }}) - {{ $product->uom }}</option>
                                     @endforeach
+                                    <!-- DUMMY DATA UNTUK TESTING -->
+                                    <option value="PRD-DUMMY-001">Dummy Produk A (PRD-DUMMY-001) - Pcs</option>
+                                    <option value="PRD-DUMMY-002">Dummy Produk B (PRD-DUMMY-002) - Box</option>
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
@@ -87,9 +93,12 @@
                 <div class="grid-2" style="gap: 0.75rem;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">Produk *</label>
-                        <select name="items[${index}][produk_id]" class="form-control" required>
+                        <select name="items[${index}][produk_id]" class="form-control select2" required>
                             <option value="" disabled selected>-- Pilih Produk --</option>
                             ${productOptions}
+                            <!-- DUMMY DATA UNTUK TESTING -->
+                            <option value="PRD-DUMMY-001">Dummy Produk A (PRD-DUMMY-001) - Pcs</option>
+                            <option value="PRD-DUMMY-002">Dummy Produk B (PRD-DUMMY-002) - Box</option>
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
@@ -101,6 +110,9 @@
                     <button type="button" class="btn btn-danger remove-item" style="padding: 6px 12px; min-height: 44px;">&times;</button>
                 </div>`;
             container.appendChild(newRow);
+            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+                $(newRow).find('.select2').select2({ width: '100%' });
+            }
             updateRemoveButtons();
         });
 

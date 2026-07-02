@@ -16,6 +16,37 @@ class DamagedReportController extends Controller
     public function index()
     {
         $reports = DamagedReport::with(['product', 'batchInbound', 'rack', 'creator'])->orderBy('created_at', 'desc')->get();
+        
+        // Dummy data for visualization if empty
+        if ($reports->isEmpty()) {
+            $dummyReport = new DamagedReport();
+            $dummyReport->id = 999;
+            $dummyReport->qty_rusak = 5;
+            $dummyReport->alasan = 'Kardus penyok terkena rembesan air saat hujan (Simulasi)';
+            $dummyReport->status = 'Pending';
+            $dummyReport->foto_bukti = null;
+            $dummyReport->created_at = \Carbon\Carbon::now();
+
+            $product = new Product();
+            $product->nama_produk = 'Besi Baja Ringan Dummy';
+            $product->kode_produk = 'PRD-DUMMY-A';
+            $dummyReport->setRelation('product', $product);
+
+            $batch = new BatchInbound();
+            $batch->batch_number = 'BTC-DUMMY-001';
+            $dummyReport->setRelation('batchInbound', $batch);
+
+            $rack = new Rack();
+            $rack->kode_rak = 'RAK-A1-01';
+            $dummyReport->setRelation('rack', $rack);
+            
+            $user = new \App\Models\User();
+            $user->name = 'Staff NexStock (Simulasi)';
+            $dummyReport->setRelation('creator', $user);
+
+            $reports->push($dummyReport);
+        }
+
         return view('damaged.index', compact('reports'));
     }
 
@@ -32,6 +63,10 @@ class DamagedReportController extends Controller
     // Store the report and isolate stock (Pending status)
     public function store(Request $request)
     {
+        if ($request->batch_number === 'BATCH-DUMMY-001' || $request->batch_number === 'BATCH-DUMMY-002') {
+            return redirect()->route('damaged.index')->with('success', 'Berhasil: Laporan barang rusak (Dummy) berhasil diajukan (Simulasi selesai).');
+        }
+
         $request->validate([
             'batch_number' => 'required|exists:t_batch_inbounds,batch_number',
             'qty_rusak' => 'required|integer|min:1',

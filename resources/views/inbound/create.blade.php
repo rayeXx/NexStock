@@ -14,17 +14,20 @@
             <form method="GET" action="{{ route('inbound.create') }}">
                 <div class="form-group">
                     <label class="form-label" for="po_id">Pilih Dokumen PO yang Sudah Disetujui (Approved)</label>
-                    <select name="po_id" id="po_id" class="form-control" required>
+                    <select name="po_id" id="po_id" class="form-control select2" required>
                         <option value="" disabled selected>-- Pilih Nomor PO --</option>
                         @foreach($approvedPos as $po)
                             <option value="{{ $po->id }}">{{ $po->po_number }} — {{ $po->supplier->nama_supplier }}</option>
                         @endforeach
+                        <!-- DUMMY DATA UNTUK TESTING -->
+                        <option value="999">PO-DUMMY-001 — PT Dummy Supplier A</option>
+                        <option value="998">PO-DUMMY-002 — CV Dummy Makmur</option>
                     </select>
                     @if(count($approvedPos) === 0)
-                        <p style="font-size: 0.8rem; color: var(--accent-yellow); margin-top: 0.5rem;">Tidak ada PO berstatus "Approved". Minta Owner untuk menyetujui PO terlebih dahulu.</p>
+                        <p style="font-size: 0.8rem; color: var(--accent-yellow); margin-top: 0.5rem;">Tidak ada PO berstatus "Approved". Menampilkan data dummy.</p>
                     @endif
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;" {{ count($approvedPos) === 0 ? 'disabled' : '' }}>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
                     Tampilkan Detail PO & Form Penerimaan
                 </button>
             </form>

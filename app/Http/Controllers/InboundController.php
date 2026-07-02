@@ -17,6 +17,66 @@ class InboundController extends Controller
     public function index()
     {
         $inbounds = BatchInbound::with(['product', 'purchaseOrder', 'rack'])->orderBy('created_at', 'desc')->get();
+        
+        // Load dummy data from session if any
+        if (session()->has('dummy_inbounds')) {
+            // Do not reverse; prepending them in their original order will naturally put the newest at the top of the collection
+            $dummies = session('dummy_inbounds');
+            foreach($dummies as $dummy) {
+                $dummyInbound = new BatchInbound();
+                $dummyInbound->batch_number = $dummy['batch_number'];
+                $dummyInbound->stok_awal_batch = $dummy['qty_terima'];
+                $dummyInbound->stok_sisa_batch = $dummy['qty_terima'];
+                $dummyInbound->expired_date = \Carbon\Carbon::parse($dummy['expired_date']);
+                $dummyInbound->created_at = \Carbon\Carbon::now();
+                
+                $product = new \App\Models\Product();
+                $product->nama_produk = 'Besi Baja Ringan Dummy';
+                $product->kode_produk = 'PRD-DUMMY-A';
+                $dummyInbound->setRelation('product', $product);
+                $dummyInbound->produk_id = 'PRD-DUMMY-A';
+
+                $po = new \App\Models\PurchaseOrder();
+                $po->id = $dummy['po_id'];
+                $po->po_number = $dummy['po_id'] == 999 ? 'PO-DUMMY-001' : 'PO-DUMMY-002';
+                $dummyInbound->setRelation('purchaseOrder', $po);
+                $dummyInbound->po_id = $dummy['po_id'];
+
+                $rack = new \App\Models\Rack();
+                $rack->kode_rak = 'RAK-A1-01';
+                $dummyInbound->setRelation('rack', $rack);
+                $dummyInbound->rak_id = 'RAK-A1-01';
+
+                $inbounds->prepend($dummyInbound);
+            }
+        } elseif ($inbounds->isEmpty()) {
+            $dummyInbound = new BatchInbound();
+            $dummyInbound->batch_number = 'BTC-DUMMY-001';
+            $dummyInbound->stok_awal_batch = 100;
+            $dummyInbound->stok_sisa_batch = 100;
+            $dummyInbound->expired_date = \Carbon\Carbon::now()->addYear();
+            $dummyInbound->created_at = \Carbon\Carbon::now();
+            
+            $product = new \App\Models\Product();
+            $product->nama_produk = 'Besi Baja Ringan Dummy';
+            $product->kode_produk = 'PRD-DUMMY-A';
+            $dummyInbound->setRelation('product', $product);
+            $dummyInbound->produk_id = 'PRD-DUMMY-A';
+
+            $po = new \App\Models\PurchaseOrder();
+            $po->id = 999;
+            $po->po_number = 'PO-DUMMY-001';
+            $dummyInbound->setRelation('purchaseOrder', $po);
+            $dummyInbound->po_id = 999;
+
+            $rack = new \App\Models\Rack();
+            $rack->kode_rak = 'RAK-A1-01';
+            $dummyInbound->setRelation('rack', $rack);
+            $dummyInbound->rak_id = 'RAK-A1-01';
+
+            $inbounds->push($dummyInbound);
+        }
+
         return view('inbound.index', compact('inbounds'));
     }
 
@@ -28,18 +88,34 @@ class InboundController extends Controller
         $poDetails = [];
 
         if ($po_id) {
-            $selectedPo = PurchaseOrder::where('id', $po_id)->first();
-            if ($selectedPo) {
-                if ($selectedPo->status !== 'Approved') {
-                    return redirect()->route('inbound.create')
-                        ->with('error', 'Akses Ditolak: Dokumen PO Belum Disetujui Owner atau Tidak Ditemukan');
+            if ($po_id == 999 || $po_id == 998) {
+                // Mock selected PO for dummy
+                $selectedPo = new PurchaseOrder();
+                $selectedPo->id = $po_id;
+                $selectedPo->po_number = $po_id == 999 ? 'PO-DUMMY-001' : 'PO-DUMMY-002';
+                $supplier = new \App\Models\Supplier();
+                $supplier->nama_supplier = $po_id == 999 ? 'PT Dummy Supplier A' : 'CV Dummy Makmur';
+                $selectedPo->setRelation('supplier', $supplier);
+                
+                $dummyProduct1 = new Product(['kode_produk' => 'PRD-DUMMY-A', 'nama_produk' => 'Besi Baja Ringan Dummy', 'uom' => 'Pcs']);
+                $detail1 = new PurchaseOrderDetail(['produk_id' => 'PRD-DUMMY-A', 'qty_pesan' => 100, 'qty_diterima' => 0]);
+                $detail1->setRelation('product', $dummyProduct1);
+                
+                $poDetails = collect([$detail1]);
+            } else {
+                $selectedPo = PurchaseOrder::where('id', $po_id)->first();
+                if ($selectedPo) {
+                    if ($selectedPo->status !== 'Approved') {
+                        return redirect()->route('inbound.create')
+                            ->with('error', 'Akses Ditolak: Dokumen PO Belum Disetujui Owner atau Tidak Ditemukan');
+                    }
+                    $poDetails = PurchaseOrderDetail::with('product')
+                        ->where('po_id', $po_id)
+                        ->get()
+                        ->filter(function($detail) {
+                            return ($detail->qty_pesan - $detail->qty_diterima) > 0;
+                        });
                 }
-                $poDetails = PurchaseOrderDetail::with('product')
-                    ->where('po_id', $po_id)
-                    ->get()
-                    ->filter(function($detail) {
-                        return ($detail->qty_pesan - $detail->qty_diterima) > 0;
-                    });
             }
         }
 
@@ -55,6 +131,20 @@ class InboundController extends Controller
     // Process the inbound transaction
     public function store(Request $request)
     {
+        if ($request->po_id == 999 || $request->po_id == 998) {
+            $dummyItems = collect($request->items)->first();
+            if ($dummyItems) {
+                // Simpan ke Session agar bisa ditampilkan di riwayat simulasi
+                session()->push('dummy_inbounds', [
+                    'po_id' => $request->po_id,
+                    'batch_number' => $dummyItems['batch_number'] ?? 'BTC-DUMMY-NEW',
+                    'qty_terima' => $dummyItems['qty_terima'] ?? 10,
+                    'expired_date' => $dummyItems['expired_date'] ?? \Carbon\Carbon::now()->addYear()->format('Y-m-d')
+                ]);
+            }
+            return redirect()->route('inbound.index')->with('success', 'Berhasil: Barang masuk dari PO Dummy berhasil didaftarkan (Simulasi selesai).');
+        }
+
         $request->validate([
             'po_id' => 'required|exists:t_purchase_orders,id',
             'items' => 'required|array',

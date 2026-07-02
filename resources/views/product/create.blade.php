@@ -24,14 +24,17 @@
 
             <div class="form-group">
                 <label class="form-label" for="kategori_id">Kategori Produk *</label>
-                <select name="kategori_id" id="kategori_id" class="form-control" required>
-                    <option value="" disabled selected>Pilih Kategori</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}" {{ old('kategori_id') == $category->id ? 'selected' : '' }}>
-                            {{ $category->nama_kategori }}
-                        </option>
-                    @endforeach
-                </select>
+                    <select name="kategori_id" id="kategori_id" class="form-control select2" required>
+                        <option value="" disabled selected>Pilih Kategori</option>
+                        @foreach($categories as $category)
+                            <option value="{{ $category->id }}" {{ old('kategori_id') == $category->id ? 'selected' : '' }}>
+                                {{ $category->nama_kategori }}
+                            </option>
+                        @endforeach
+                        <!-- DUMMY DATA UNTUK TESTING -->
+                        <option value="999">Kategori Dummy Makanan</option>
+                        <option value="998">Kategori Dummy Elektronik</option>
+                    </select>
             </div>
 
             <div class="grid-2">

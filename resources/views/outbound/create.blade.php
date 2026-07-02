@@ -38,11 +38,16 @@
                         <div class="grid-2" style="gap: 0.75rem;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label">Produk *</label>
-                                <select name="items[0][produk_id]" class="form-control" required>
+                                <select name="items[0][produk_id]" class="form-control select2" required>
                                     <option value="" disabled selected>-- Pilih Produk --</option>
                                     @foreach($products as $product)
                                         <option value="{{ $product->kode_produk }}">
                                             {{ $product->nama_produk }} (Stok: {{ $product->total_stok }} {{ $product->uom }})
+                                        </option>
+                                    @endforeach
+                                    @foreach($dummyProducts as $dp)
+                                        <option value="{{ $dp->kode_produk }}">
+                                            {{ $dp->nama_produk }} (Stok: {{ $dp->__dummy_stok }} {{ $dp->uom }}) [Simulasi]
                                         </option>
                                     @endforeach
                                 </select>
@@ -72,15 +77,26 @@
 
     <script>
         const products = @json($products->values());
+        const dummyProducts = @json($dummyProducts->values());
         let outboundCount = 1;
+
+        function buildProductOptions() {
+            let options = products.map(p =>
+                `<option value="${p.kode_produk}">${p.nama_produk} (Stok: ${p.total_stok} ${p.uom})</option>`
+            ).join('');
+
+            options += dummyProducts.map(p =>
+                `<option value="${p.kode_produk}">${p.nama_produk} (Stok: ${p.__dummy_stok} ${p.uom}) [Simulasi]</option>`
+            ).join('');
+
+            return options;
+        }
 
         document.getElementById('addOutboundItem').addEventListener('click', function () {
             const container = document.getElementById('outboundItems');
             const index = outboundCount++;
 
-            const productOptions = products.map(p =>
-                `<option value="${p.kode_produk}">${p.nama_produk} (Stok: ${p.total_stok} ${p.uom})</option>`
-            ).join('');
+            const productOptions = buildProductOptions();
 
             const newRow = document.createElement('div');
             newRow.className = 'outbound-item-row';
@@ -89,7 +105,7 @@
                 <div class="grid-2" style="gap: 0.75rem;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">Produk *</label>
-                        <select name="items[${index}][produk_id]" class="form-control" required>
+                        <select name="items[${index}][produk_id]" class="form-control select2" required>
                             <option value="" disabled selected>-- Pilih Produk --</option>
                             ${productOptions}
                         </select>
@@ -103,6 +119,9 @@
                     <button type="button" class="btn btn-danger remove-outbound-item" style="padding: 6px 12px; min-height: 44px;">&times;</button>
                 </div>`;
             container.appendChild(newRow);
+            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+                $(newRow).find('.select2').select2({ width: '100%' });
+            }
             updateOutboundRemoveButtons();
         });
 

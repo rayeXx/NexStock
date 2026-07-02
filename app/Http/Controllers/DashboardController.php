@@ -29,6 +29,11 @@ class DashboardController extends Controller
             $totalAsetValue += $totalStok * $hargaBeli;
         }
 
+        // Dummy data for testing if total asset is 0
+        if ($totalAsetValue == 0) {
+            $totalAsetValue = 125000000; // Rp 125.000.000 dummy
+        }
+
         // 2. KPI: Persentase Ranking Efisiensi Pengiriman Pemasok (Supplier Performance)
         // Formula: (Total Qty Diterima / Total Qty Dipesan) * 100
         $suppliers = Supplier::with(['purchaseOrders.details'])->get();
@@ -171,13 +176,82 @@ class DashboardController extends Controller
             'karantina_count' => DamagedReport::where('status', 'Pending')->count(),
         ];
 
+        // Dummy data fallback for testing dashboard
+        if ($stats['total_stok'] == 0) {
+            $stats['total_stok'] = 14500;
+            $stats['total_rak'] = 4;
+            $stats['karantina_count'] = 3;
+        }
+
+        // 6. Chart Data: Sales/Outbound (for Owner only)
+        $userRole = auth()->user()->role;
+        $chartMonthLabels = [];
+        $chartMonthData = [];
+        $chartWeekLabels = [];
+        $chartWeekData = [];
+
+        if ($userRole === 'owner') {
+            $currentMonth = Carbon::now()->month;
+            $currentYear = Carbon::now()->year;
+
+            // Monthly data
+            $salesMonthly = DB::table('t_outbounds')
+                ->join('t_outbound_details', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
+                ->select(DB::raw('DATE(t_outbounds.tanggal_keluar) as date'), DB::raw('SUM(t_outbound_details.qty_keluar) as total_qty'))
+                ->whereMonth('t_outbounds.tanggal_keluar', $currentMonth)
+                ->whereYear('t_outbounds.tanggal_keluar', $currentYear)
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+
+            $chartMonthLabels = $salesMonthly->map(fn($item) => Carbon::parse($item->date)->format('d M'))->toArray();
+            $chartMonthData = $salesMonthly->pluck('total_qty')->map(fn($v) => (int)$v)->toArray();
+
+            // Weekly data (last 7 days)
+            $weekStart = Carbon::now()->subDays(6)->startOfDay();
+            $salesWeekly = DB::table('t_outbounds')
+                ->join('t_outbound_details', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
+                ->select(DB::raw('DATE(t_outbounds.tanggal_keluar) as date'), DB::raw('SUM(t_outbound_details.qty_keluar) as total_qty'))
+                ->where('t_outbounds.tanggal_keluar', '>=', $weekStart)
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+
+            $chartWeekLabels = $salesWeekly->map(fn($item) => Carbon::parse($item->date)->format('D, d M'))->toArray();
+            $chartWeekData = $salesWeekly->pluck('total_qty')->map(fn($v) => (int)$v)->toArray();
+
+            // Dummy data fallback if no real data exists
+            if (empty($chartMonthData)) {
+                $daysInMonth = Carbon::now()->daysInMonth;
+                for ($d = 1; $d <= $daysInMonth; $d++) {
+                    $date = Carbon::create($currentYear, $currentMonth, $d);
+                    if ($date->gt(Carbon::now())) break;
+                    $chartMonthLabels[] = $date->format('d M');
+                    $chartMonthData[] = rand(15, 120);
+                }
+            }
+
+            if (empty($chartWeekData)) {
+                for ($i = 6; $i >= 0; $i--) {
+                    $date = Carbon::now()->subDays($i);
+                    $chartWeekLabels[] = $date->format('D, d M');
+                    $chartWeekData[] = rand(10, 80);
+                }
+            }
+        }
+
         return view('dashboard', compact(
             'totalAsetValue',
             'supplierRankings',
             'restockForecasts',
             'expiredBatches',
             'errorsDetected',
-            'stats'
+            'stats',
+            'chartMonthLabels',
+            'chartMonthData',
+            'chartWeekLabels',
+            'chartWeekData',
+            'userRole'
         ));
     }
 }

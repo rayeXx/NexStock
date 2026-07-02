@@ -4,7 +4,7 @@
             <h1>Manajemen Purchase Order</h1>
             <p>Kelola dokumen pengadaan stok dari pemasok dan pantau status persetujuan Owner.</p>
         </div>
-        @if(auth()->user()->role === 'admin_gudang' || auth()->user()->role === 'owner')
+        @if(auth()->user()->role === 'admin_gudang')
             <a href="{{ route('po.create') }}" class="btn btn-primary">
                 + Buat Draft PO Baru
             </a>
@@ -52,7 +52,7 @@
                                         Detail
                                     </a>
                                     {{-- Submit for approval (Admin, Draft only) --}}
-                                    @if($po->status === 'Draft' && (auth()->user()->role === 'admin_gudang' || auth()->user()->role === 'owner'))
+                                    @if($po->status === 'Draft' && auth()->user()->role === 'admin_gudang')
                                         <form action="{{ route('po.submit', $po->id) }}" method="POST" style="display:inline;">
                                             @csrf
                                             <button type="submit" class="btn btn-primary" style="padding: 5px 10px; min-height:36px; min-width:36px; font-size: 0.8rem;">
@@ -76,7 +76,7 @@
                                         </form>
                                     @endif
                                     {{-- Delete Draft --}}
-                                    @if($po->status === 'Draft')
+                                    @if($po->status === 'Draft' && auth()->user()->role === 'admin_gudang')
                                         <form action="{{ route('po.destroy', $po->id) }}" method="POST" onsubmit="return confirm('Hapus draft PO ini?');" style="display:inline;">
                                             @csrf
                                             @method('DELETE')
