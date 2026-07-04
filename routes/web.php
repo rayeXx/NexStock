@@ -11,6 +11,7 @@ use App\Http\Controllers\InboundController;
 use App\Http\Controllers\OutboundController;
 use App\Http\Controllers\DamagedReportController;
 use App\Http\Controllers\StockOpnameController;
+use App\Http\Controllers\RestockRequestController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to dashboard (will trigger login if unauthenticated)
@@ -56,6 +57,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [StockOpnameController::class, 'show'])->name('show');
     });
 
+    // Restock Request (Staff: create + history)
+    Route::prefix('restock-request')->name('restock-request.')->group(function () {
+        Route::get('/create', [RestockRequestController::class, 'create'])->name('create');
+        Route::post('/store', [RestockRequestController::class, 'store'])->name('store');
+        Route::get('/history', [RestockRequestController::class, 'history'])->name('history');
+    });
+
     // 2. Master Data & Procurement (Admin & Owner only)
     Route::middleware(['role:admin_gudang,owner'])->group(function () {
         Route::resource('product', ProductController::class)->except(['show']);
@@ -77,18 +85,15 @@ Route::middleware(['auth'])->group(function () {
         Route::prefix('po')->name('po.')->group(function () {
             Route::get('/draft/create', [PurchaseOrderController::class, 'create'])->name('create'); // changed url to /draft/create to avoid {id} conflict
             Route::post('/store', [PurchaseOrderController::class, 'store'])->name('store');
-            Route::post('/{id}/submit', [PurchaseOrderController::class, 'submit'])->name('submit');
+            Route::post('/{id}/order', [PurchaseOrderController::class, 'order'])->name('order');
+            Route::post('/{id}/history/{historyId}/retur', [InboundController::class, 'updateRetur'])->name('update-retur');
             Route::delete('/{id}', [PurchaseOrderController::class, 'destroy'])->name('destroy');
         });
-    });
 
-    // 4. Approvals (Owner only)
-    Route::middleware(['role:owner'])->group(function () {
-        Route::post('/po/{id}/approve', [PurchaseOrderController::class, 'approve'])->name('po.approve');
-        Route::post('/po/{id}/reject', [PurchaseOrderController::class, 'reject'])->name('po.reject');
-
-        Route::post('/damaged/{id}/approve', [DamagedReportController::class, 'approve'])->name('damaged.approve');
-        Route::post('/damaged/{id}/reject', [DamagedReportController::class, 'reject'])->name('damaged.reject');
+        // Restock Request Review (Admin only)
+        Route::get('/restock-request/review', [RestockRequestController::class, 'reviewIndex'])->name('restock-request.review');
+        Route::post('/restock-request/{id}/approve', [RestockRequestController::class, 'approve'])->name('restock-request.approve');
+        Route::post('/restock-request/{id}/reject', [RestockRequestController::class, 'reject'])->name('restock-request.reject');
     });
 });
 

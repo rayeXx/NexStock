@@ -14,6 +14,7 @@ class BatchInbound extends Model
 
     protected $fillable = [
         'batch_number',
+        'batch_supplier',
         'produk_id',
         'po_id',
         'rak_id',

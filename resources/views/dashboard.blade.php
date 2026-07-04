@@ -48,17 +48,17 @@
         <div class="glass-card metric-box">
             <span class="metric-label">Karantina Barang Rusak</span>
             <span class="metric-value" style="color: var(--accent-yellow);">{{ $stats['karantina_count'] }} Kasus</span>
-            <p>Laporan barang rusak berstatus pending dan sedang menunggu review.</p>
+            <p>Total kasus pelaporan kerusakan atau kehilangan barang.</p>
         </div>
     </div>
     <div class="grid-3" style="margin-bottom: 1.5rem;">
         <div class="glass-card metric-box">
-            <span class="metric-label">PO Pending Approval</span>
-            <span class="metric-value" style="color: #94a3b8;">{{ $poStats['pending'] }}</span>
-            <p>Menunggu persetujuan Owner.</p>
+            <span class="metric-label">PO Ordered</span>
+            <span class="metric-value" style="color: #94a3b8;">{{ $poStats['ordered'] }}</span>
+            <p>Telah dipesan ke Supplier.</p>
         </div>
         <div class="glass-card metric-box">
-            <span class="metric-label">PO Partial</span>
+            <span class="metric-label">PO Partially Received</span>
             <span class="metric-value" style="color: var(--accent-yellow);">{{ $poStats['partial'] }}</span>
             <p>Penerimaan barang belum lengkap.</p>
         </div>
@@ -66,6 +66,35 @@
             <span class="metric-label">PO Completed</span>
             <span class="metric-value accent-green">{{ $poStats['completed'] }}</span>
             <p>Seluruh barang telah diterima.</p>
+        </div>
+    </div>
+    <div class="grid-3" style="margin-bottom: 1.5rem;">
+        <div class="glass-card metric-box">
+            <span class="metric-label">Barang Rusak (Hari Ini)</span>
+            <span class="metric-value" style="color: var(--accent-red);">{{ $poStats['damaged_today'] }} Unit</span>
+            <p>Unit ditolak dari PO hari ini.</p>
+        </div>
+        <div class="glass-card metric-box">
+            <span class="metric-label">Barang Rusak (Minggu Ini)</span>
+            <span class="metric-value" style="color: var(--accent-red);">{{ $poStats['damaged_week'] }} Unit</span>
+            <p>Unit ditolak dari PO minggu ini.</p>
+        </div>
+        <div class="glass-card metric-box">
+            <span class="metric-label">Barang Rusak (Bulan Ini)</span>
+            <span class="metric-value" style="color: var(--accent-red);">{{ $poStats['damaged_month'] }} Unit</span>
+            <p>Unit ditolak dari PO bulan ini.</p>
+        </div>
+    </div>
+    <div class="grid-2" style="margin-bottom: 1.5rem;">
+        <div class="glass-card metric-box">
+            <span class="metric-label">Menunggu Retur</span>
+            <span class="metric-value" style="color: var(--accent-yellow);">{{ $poStats['menunggu_retur'] }} Kasus</span>
+            <p>Penerimaan barang rusak yang belum diretur.</p>
+        </div>
+        <div class="glass-card metric-box">
+            <span class="metric-label">Selesai Diretur</span>
+            <span class="metric-value accent-green">{{ $poStats['sudah_diretur'] }} Kasus</span>
+            <p>Penerimaan barang rusak yang sudah diretur.</p>
         </div>
     </div>
     @else

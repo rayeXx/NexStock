@@ -17,60 +17,6 @@ class OutboundController extends Controller
     {
         $outbounds = Outbound::with(['details.product', 'details.batchInbound'])->orderBy('created_at', 'desc')->get();
         
-        // Load dummy outbound data from session if any
-        if (session()->has('dummy_outbounds')) {
-            $dummies = session('dummy_outbounds');
-            foreach ($dummies as $i => $dummy) {
-                $dummyOutbound = new Outbound();
-                $dummyOutbound->id = 9000 + $i;
-                $dummyOutbound->outbound_number = 'OUT-' . str_replace('-', '', $dummy['tanggal']) . '-DM' . str_pad($i + 1, 2, '0', STR_PAD_LEFT);
-                $dummyOutbound->tujuan = $dummy['tujuan'];
-                $dummyOutbound->tanggal_keluar = \Carbon\Carbon::parse($dummy['tanggal']);
-                $dummyOutbound->created_at = \Carbon\Carbon::parse($dummy['tanggal']);
-
-                $detail = new OutboundDetail();
-                $detail->qty_keluar = $dummy['qty_keluar'];
-                $detail->batch_number = 'BTC-DUMMY-001';
-
-                $product = new \App\Models\Product();
-                $product->nama_produk = 'Besi Baja Ringan Dummy';
-                $product->kode_produk = $dummy['produk_id'];
-                $detail->setRelation('product', $product);
-
-                $batch = new BatchInbound();
-                $batch->batch_number = 'BTC-DUMMY-001';
-                $batch->rak_id = 'RAK-A1-01';
-                $detail->setRelation('batchInbound', $batch);
-
-                $dummyOutbound->setRelation('details', collect([$detail]));
-                $outbounds->prepend($dummyOutbound);
-            }
-        } elseif ($outbounds->isEmpty()) {
-            $dummyOutbound = new Outbound();
-            $dummyOutbound->id = 999;
-            $dummyOutbound->outbound_number = 'OUT-' . date('Ymd') . '-DUMMY';
-            $dummyOutbound->tujuan = 'Distributor Utama Jakarta';
-            $dummyOutbound->tanggal_keluar = \Carbon\Carbon::today();
-            $dummyOutbound->created_at = \Carbon\Carbon::now();
-
-            $detail = new OutboundDetail();
-            $detail->qty_keluar = 15;
-            $detail->batch_number = 'BTC-DUMMY-001';
-
-            $product = new \App\Models\Product();
-            $product->nama_produk = 'Besi Baja Ringan Dummy';
-            $product->kode_produk = 'PRD-DUMMY-A';
-            $detail->setRelation('product', $product);
-
-            $batch = new BatchInbound();
-            $batch->batch_number = 'BTC-DUMMY-001';
-            $batch->rak_id = 'RAK-A1-01';
-            $detail->setRelation('batchInbound', $batch);
-
-            $dummyOutbound->setRelation('details', collect([$detail]));
-            $outbounds->push($dummyOutbound);
-        }
-
         return view('outbound.index', compact('outbounds'));
     }
 
@@ -82,77 +28,12 @@ class OutboundController extends Controller
             return $product->total_stok > 0;
         });
 
-        // Inject dummy products from inbound session data
-        $dummyProducts = collect();
-        if (session()->has('dummy_inbounds')) {
-            $grouped = collect(session('dummy_inbounds'))->groupBy('batch_number');
-            foreach ($grouped as $batchNumber => $items) {
-                $first = $items->first();
-                $totalQty = $items->sum('qty_terima');
-                $dp = new Product();
-                $dp->kode_produk = $first['produk_id'] ?? 'PRD-DUMMY-A';
-                $dp->nama_produk = 'Besi Baja Ringan Dummy';
-                $dp->uom = 'Pcs';
-                $dp->stok_minimum = 10;
-                // Store total_stok as a public property for the view
-                $dp->__dummy_stok = $totalQty;
-                $dummyProducts->push($dp);
-            }
-        }
-
-        // If no real products and no session dummies, provide a default dummy
-        if ($products->isEmpty() && $dummyProducts->isEmpty()) {
-            $dp = new Product();
-            $dp->kode_produk = 'PRD-DUMMY-A';
-            $dp->nama_produk = 'Besi Baja Ringan Dummy';
-            $dp->uom = 'Pcs';
-            $dp->stok_minimum = 10;
-            $dp->__dummy_stok = 100;
-            $dummyProducts->push($dp);
-        }
-
-        // Deduplicate dummy products by kode_produk
-        $dummyProducts = $dummyProducts->unique('kode_produk');
-
-        // Calculate total dummy stock per product
-        $dummyStokMap = [];
-        if (session()->has('dummy_inbounds')) {
-            foreach (session('dummy_inbounds') as $item) {
-                $pid = $item['produk_id'] ?? 'PRD-DUMMY-A';
-                $dummyStokMap[$pid] = ($dummyStokMap[$pid] ?? 0) + (int)$item['qty_terima'];
-            }
-        }
-        // Apply calculated stock
-        foreach ($dummyProducts as $dp) {
-            if (isset($dummyStokMap[$dp->kode_produk])) {
-                $dp->__dummy_stok = $dummyStokMap[$dp->kode_produk];
-            }
-        }
-
-        return view('outbound.create', compact('products', 'dummyProducts'));
+        return view('outbound.create', compact('products'));
     }
 
     // Process outbound transaction (FEFO System)
     public function store(Request $request)
     {
-        // Bypass validation for dummy items
-        if (isset($request->items) && is_array($request->items)) {
-            foreach ($request->items as $item) {
-                if (str_starts_with($item['produk_id'] ?? '', 'PRD-DUMMY')) {
-                    // Save to session for outbound list
-                    session()->push('dummy_outbounds', [
-                        'tujuan' => $request->tujuan ?? 'Tujuan Simulasi',
-                        'produk_id' => $item['produk_id'],
-                        'qty_keluar' => $item['qty_keluar'] ?? 10,
-                        'tanggal' => now()->format('Y-m-d'),
-                    ]);
-                    return redirect()->route('outbound.index')->with('success', 'Berhasil: Validasi pengeluaran barang berhasil dilakukan (Simulasi selesai).')->with('instructions', [
-                        ['produk' => 'Besi Baja Ringan Dummy', 'qty' => $item['qty_keluar'] ?? 10, 'rak' => 'RAK-A1-01', 'batch' => 'BTC-DUMMY-001']
-                    ]);
-                }
-            }
-        }
-
         $request->validate([
             'tujuan' => 'required|string',
             'items' => 'required|array',

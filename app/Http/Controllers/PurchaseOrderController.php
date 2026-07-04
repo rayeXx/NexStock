@@ -6,8 +6,12 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderDetail;
 use App\Models\Supplier;
 use App\Models\Product;
+use App\Models\Rack;
+use App\Models\BatchInbound;
+use App\Models\PoReceivingHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class PurchaseOrderController extends Controller
 {
@@ -22,7 +26,11 @@ class PurchaseOrderController extends Controller
     public function show($id)
     {
         $po = PurchaseOrder::with(['supplier', 'creator', 'details.product', 'receivingHistory.product', 'receivingHistory.receiver'])->findOrFail($id);
-        return view('po.show', compact('po'));
+        
+        // Get all racks, order by most available capacity for recommendation
+        $racks = Rack::orderByRaw('(kapasitas_maksimum_volume - kapasitas_terpakai) DESC')->get();
+        
+        return view('po.show', compact('po', 'racks'));
     }
 
     // Form to create PO
@@ -82,46 +90,18 @@ class PurchaseOrderController extends Controller
         }
     }
 
-    // Submit draft PO for approval
-    public function submit($id)
+    // Admin manually orders a Draft PO
+    public function order($id)
     {
         $po = PurchaseOrder::findOrFail($id);
         if ($po->status !== 'Draft') {
-            return redirect()->back()->with('error', 'Hanya draf PO yang dapat diajukan untuk approval.');
+            return redirect()->back()->with('error', 'Hanya draf PO yang dapat dipesan ke supplier.');
         }
 
-        $po->status = 'Pending Approval';
+        $po->status = 'Ordered';
         $po->save();
 
-        return redirect()->route('po.index')->with('success', 'Purchase Order berhasil diajukan ke Owner untuk mendapat persetujuan.');
-    }
-
-    // Owner approves PO
-    public function approve($id)
-    {
-        $po = PurchaseOrder::findOrFail($id);
-        if ($po->status !== 'Pending Approval') {
-            return redirect()->back()->with('error', 'Hanya PO berstatus Pending Approval yang dapat disetujui.');
-        }
-
-        $po->status = 'Approved';
-        $po->save();
-
-        return redirect()->route('po.index')->with('success', 'Purchase Order telah berhasil disetujui (Approved).');
-    }
-
-    // Owner rejects PO
-    public function reject($id)
-    {
-        $po = PurchaseOrder::findOrFail($id);
-        if ($po->status !== 'Pending Approval') {
-            return redirect()->back()->with('error', 'Hanya PO berstatus Pending Approval yang dapat ditolak.');
-        }
-
-        $po->status = 'Rejected';
-        $po->save();
-
-        return redirect()->route('po.index')->with('success', 'Purchase Order telah ditolak (Rejected).');
+        return redirect()->route('po.index')->with('success', 'Purchase Order berhasil dipesan ke supplier (Status: Ordered).');
     }
 
     // Delete PO (Draft only)

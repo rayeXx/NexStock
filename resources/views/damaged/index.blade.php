@@ -23,9 +23,7 @@
                         <th>Dilaporkan Oleh</th>
                         <th>Status</th>
                         <th>Foto Bukti</th>
-                        @if(auth()->user()->role === 'owner')
-                        <th>Aksi Owner</th>
-                        @endif
+
                     </tr>
                 </thead>
                 <tbody>
@@ -42,7 +40,7 @@
                                 @if($report->status === 'Pending')
                                     <span class="badge badge-yellow pulse-indicator">Pending Approval</span>
                                 @elseif($report->status === 'Approved')
-                                    <span class="badge badge-green">Disetujui (Dibuang)</span>
+                                    <span class="badge badge-green">Terkarantina (Disetujui)</span>
                                 @else
                                     <span class="badge badge-blue">Ditolak (Stok Dikembalikan)</span>
                                 @endif
@@ -56,28 +54,11 @@
                                     <span style="color: var(--text-muted);">Tidak ada</span>
                                 @endif
                             </td>
-                            @if(auth()->user()->role === 'owner')
-                            <td>
-                                @if($report->status === 'Pending')
-                                    <div style="display: flex; gap: 0.5rem;">
-                                        <form action="{{ route('damaged.approve', $report->id) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="btn btn-success" style="padding: 5px 10px; min-height: 36px; font-size: 0.75rem;">Setujui</button>
-                                        </form>
-                                        <form action="{{ route('damaged.reject', $report->id) }}" method="POST" onsubmit="return confirm('Tolak laporan? Stok akan dikembalikan.');">
-                                            @csrf
-                                            <button type="submit" class="btn btn-secondary" style="padding: 5px 10px; min-height: 36px; font-size: 0.75rem;">Tolak</button>
-                                        </form>
-                                    </div>
-                                @else
-                                    <span style="color: var(--text-muted); font-size: 0.8rem;">Sudah Diproses</span>
-                                @endif
-                            </td>
-                            @endif
+
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ auth()->user()->role === 'owner' ? '10' : '9' }}" style="text-align: center; padding: 2rem; color: var(--text-muted);">Belum ada laporan barang rusak.</td>
+                            <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-muted);">Belum ada laporan barang rusak.</td>
                         </tr>
                     @endforelse
                 </tbody>

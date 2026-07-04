@@ -4,9 +4,11 @@
             <h1>Master Data Produk</h1>
             <p>Kelola master produk, SKU pabrik, batas minimum stok, dan harga beli persediaan.</p>
         </div>
+        @if(auth()->user()->role !== 'owner')
         <a href="{{ route('product.create') }}" class="btn btn-primary">
             + Tambah Produk Baru
         </a>
+        @endif
     </div>
 
     {{-- Search & Filter Bar --}}
@@ -43,7 +45,9 @@
                         <th>UOM (Satuan)</th>
                         <th>Stok Saat Ini</th>
                         <th>Status</th>
+                        @if(auth()->user()->role !== 'owner')
                         <th>Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody id="productTableBody">
@@ -96,7 +100,8 @@
                 if (!document.getElementById('noResultRow')) {
                     const tr = document.createElement('tr');
                     tr.id = 'noResultRow';
-                    tr.innerHTML = '<td colspan="9" style="text-align:center; padding:2rem; color:var(--text-muted);">Tidak ada produk yang sesuai filter.</td>';
+                    const colspan = {{ auth()->user()->role === 'owner' ? '8' : '9' }};
+                    tr.innerHTML = `<td colspan="${colspan}" style="text-align:center; padding:2rem; color:var(--text-muted);">Tidak ada produk yang sesuai filter.</td>`;
                     tbody.appendChild(tr);
                 }
             } else {

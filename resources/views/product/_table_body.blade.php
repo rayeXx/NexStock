@@ -18,6 +18,7 @@
                 <span class="badge badge-green">🟢 Aman</span>
             @endif
         </td>
+        @if(auth()->user()->role !== 'owner')
         <td>
             <div style="display: flex; gap: 0.5rem;">
                 <a href="{{ route('product.edit', $product->kode_produk) }}" class="btn btn-secondary" style="padding: 6px 12px; min-height:36px; min-width:36px; font-size: 0.85rem;">
@@ -32,9 +33,10 @@
                 </form>
             </div>
         </td>
+        @endif
     </tr>
 @empty
     <tr>
-        <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-muted);">Belum ada data produk. Klik "+ Tambah Produk Baru" untuk menambahkan.</td>
+        <td colspan="{{ auth()->user()->role === 'owner' ? '8' : '9' }}" style="text-align: center; padding: 2rem; color: var(--text-muted);">Belum ada data produk. Klik "+ Tambah Produk Baru" untuk menambahkan.</td>
     </tr>
 @endforelse

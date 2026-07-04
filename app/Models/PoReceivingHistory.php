@@ -12,8 +12,19 @@ class PoReceivingHistory extends Model
     protected $fillable = [
         'po_id',
         'produk_id',
-        'qty_received',
+        'qty_received', // Kept for backwards compatibility
+        'qty_datang',
+        'qty_rusak',
+        'kondisi_barang',
+        'alasan_kerusakan',
+        'catatan',
         'batch_number',
+        'batch_supplier',
+        'expired_date',
+        'rak_id',
+        'status_retur',
+        'tanggal_retur',
+        'catatan_retur',
         'received_at',
         'received_by',
     ];

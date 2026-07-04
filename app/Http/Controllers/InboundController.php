@@ -19,65 +19,6 @@ class InboundController extends Controller
     {
         $inbounds = BatchInbound::with(['product', 'purchaseOrder', 'rack'])->orderBy('created_at', 'desc')->get();
         
-        // Load dummy data from session if any
-        if (session()->has('dummy_inbounds')) {
-            // Do not reverse; prepending them in their original order will naturally put the newest at the top of the collection
-            $dummies = session('dummy_inbounds');
-            foreach($dummies as $dummy) {
-                $dummyInbound = new BatchInbound();
-                $dummyInbound->batch_number = $dummy['batch_number'];
-                $dummyInbound->stok_awal_batch = $dummy['qty_terima'];
-                $dummyInbound->stok_sisa_batch = $dummy['qty_terima'];
-                $dummyInbound->expired_date = \Carbon\Carbon::parse($dummy['expired_date']);
-                $dummyInbound->created_at = \Carbon\Carbon::now();
-                
-                $product = new \App\Models\Product();
-                $product->nama_produk = 'Besi Baja Ringan Dummy';
-                $product->kode_produk = 'PRD-DUMMY-A';
-                $dummyInbound->setRelation('product', $product);
-                $dummyInbound->produk_id = 'PRD-DUMMY-A';
-
-                $po = new \App\Models\PurchaseOrder();
-                $po->id = $dummy['po_id'];
-                $po->po_number = $dummy['po_id'] == 999 ? 'PO-DUMMY-001' : 'PO-DUMMY-002';
-                $dummyInbound->setRelation('purchaseOrder', $po);
-                $dummyInbound->po_id = $dummy['po_id'];
-
-                $rack = new \App\Models\Rack();
-                $rack->kode_rak = 'RAK-A1-01';
-                $dummyInbound->setRelation('rack', $rack);
-                $dummyInbound->rak_id = 'RAK-A1-01';
-
-                $inbounds->prepend($dummyInbound);
-            }
-        } elseif ($inbounds->isEmpty()) {
-            $dummyInbound = new BatchInbound();
-            $dummyInbound->batch_number = 'BTC-DUMMY-001';
-            $dummyInbound->stok_awal_batch = 100;
-            $dummyInbound->stok_sisa_batch = 100;
-            $dummyInbound->expired_date = \Carbon\Carbon::now()->addYear();
-            $dummyInbound->created_at = \Carbon\Carbon::now();
-            
-            $product = new \App\Models\Product();
-            $product->nama_produk = 'Besi Baja Ringan Dummy';
-            $product->kode_produk = 'PRD-DUMMY-A';
-            $dummyInbound->setRelation('product', $product);
-            $dummyInbound->produk_id = 'PRD-DUMMY-A';
-
-            $po = new \App\Models\PurchaseOrder();
-            $po->id = 999;
-            $po->po_number = 'PO-DUMMY-001';
-            $dummyInbound->setRelation('purchaseOrder', $po);
-            $dummyInbound->po_id = 999;
-
-            $rack = new \App\Models\Rack();
-            $rack->kode_rak = 'RAK-A1-01';
-            $dummyInbound->setRelation('rack', $rack);
-            $dummyInbound->rak_id = 'RAK-A1-01';
-
-            $inbounds->push($dummyInbound);
-        }
-
         return view('inbound.index', compact('inbounds'));
     }
 
@@ -89,178 +30,223 @@ class InboundController extends Controller
         $poDetails = [];
 
         if ($po_id) {
-            if ($po_id == 999 || $po_id == 998) {
-                // Mock selected PO for dummy
-                $selectedPo = new PurchaseOrder();
-                $selectedPo->id = $po_id;
-                $selectedPo->po_number = $po_id == 999 ? 'PO-DUMMY-001' : 'PO-DUMMY-002';
-                $supplier = new \App\Models\Supplier();
-                $supplier->nama_supplier = $po_id == 999 ? 'PT Dummy Supplier A' : 'CV Dummy Makmur';
-                $selectedPo->setRelation('supplier', $supplier);
-                
-                $dummyProduct1 = new Product(['kode_produk' => 'PRD-DUMMY-A', 'nama_produk' => 'Besi Baja Ringan Dummy', 'uom' => 'Pcs']);
-                $detail1 = new PurchaseOrderDetail(['produk_id' => 'PRD-DUMMY-A', 'qty_pesan' => 100, 'qty_diterima' => 0]);
-                $detail1->setRelation('product', $dummyProduct1);
-                
-                $poDetails = collect([$detail1]);
-            } else {
-                $selectedPo = PurchaseOrder::where('id', $po_id)->first();
-                if ($selectedPo) {
-                    if (!in_array($selectedPo->status, ['Approved', 'Partial'])) {
-                        return redirect()->route('inbound.create')
-                            ->with('error', 'Akses Ditolak: Dokumen PO Belum Disetujui Owner atau Tidak Ditemukan');
-                    }
-                    $poDetails = PurchaseOrderDetail::with('product')
-                        ->where('po_id', $po_id)
-                        ->get()
-                        ->filter(function($detail) {
-                            return ($detail->qty_pesan - $detail->qty_diterima) > 0;
-                        });
+            $selectedPo = PurchaseOrder::with('receivingHistory')->where('id', $po_id)->first();
+            if ($selectedPo) {
+                if (!in_array($selectedPo->status, ['Ordered', 'Partially Received'])) {
+                    return redirect()->route('inbound.create')
+                        ->with('error', 'Akses Ditolak: Dokumen PO Belum Dipesan atau Tidak Ditemukan');
                 }
+                $poDetails = PurchaseOrderDetail::with('product')
+                    ->where('po_id', $po_id)
+                    ->get()
+                    ->filter(function($detail) {
+                        return ($detail->qty_pesan - $detail->qty_diterima) > 0;
+                    });
             }
         }
 
         // List approved or partial POs that are not completed yet
-        $approvedPos = PurchaseOrder::whereIn('status', ['Approved', 'Partial'])
+        $approvedPos = PurchaseOrder::whereIn('status', ['Ordered', 'Partially Received'])
             ->whereHas('details', function($query) {
-                $query->whereRaw('qty_pesan > qty_diterima');
+                $query->whereColumn('qty_pesan', '>', 'qty_diterima');
             })->get();
 
-        return view('inbound.create', compact('approvedPos', 'selectedPo', 'poDetails'));
+        $racks = \App\Models\Rack::all();
+
+        return view('inbound.create', compact('approvedPos', 'selectedPo', 'poDetails', 'racks'));
     }
 
-    // Process the inbound transaction
     public function store(Request $request)
     {
-        if ($request->po_id == 999 || $request->po_id == 998) {
-            $dummyItems = collect($request->items)->first();
-            if ($dummyItems) {
-                // Simpan ke Session agar bisa ditampilkan di riwayat simulasi
-                session()->push('dummy_inbounds', [
-                    'po_id' => $request->po_id,
-                    'batch_number' => $dummyItems['batch_number'] ?? 'BTC-DUMMY-NEW',
-                    'qty_terima' => $dummyItems['qty_terima'] ?? 10,
-                    'expired_date' => $dummyItems['expired_date'] ?? \Carbon\Carbon::now()->addYear()->format('Y-m-d')
-                ]);
-            }
-            return redirect()->route('inbound.index')->with('success', 'Berhasil: Barang masuk dari PO Dummy berhasil didaftarkan (Simulasi selesai).');
+        $po = PurchaseOrder::with('details.product')->findOrFail($request->po_id);
+
+        if (!in_array($po->status, ['Ordered', 'Partially Received'])) {
+            return redirect()->back()->with('error', 'Hanya PO berstatus Ordered atau Partially Received yang dapat diproses penerimaannya.');
         }
 
         $request->validate([
-            'po_id' => 'required|exists:t_purchase_orders,id',
             'items' => 'required|array',
             'items.*.produk_id' => 'required|exists:m_products,kode_produk',
-            'items.*.qty_terima' => 'required|integer|min:1',
-            'items.*.batch_number' => 'required|string|unique:t_batch_inbounds,batch_number',
-            'items.*.expired_date' => 'required|date',
+            'items.*.qty_datang' => 'required|integer|min:0',
+            'items.*.qty_rusak' => 'required|integer|min:0',
+            'items.*.alasan_kerusakan' => 'nullable|string',
+            'items.*.catatan' => 'nullable|string',
+            'items.*.batch_supplier' => 'nullable|string',
+            'items.*.expired_date' => 'nullable|date',
+            'items.*.rak_id' => 'nullable|exists:m_racks,kode_rak',
         ]);
 
-        $po = PurchaseOrder::findOrFail($request->po_id);
-        if (!in_array($po->status, ['Approved', 'Partial'])) {
-            return redirect()->back()->with('error', 'Akses Ditolak: Dokumen PO Belum Disetujui Owner atau Tidak Ditemukan');
-        }
-
-        $itemsData = $request->items;
-        $today = Carbon::today();
-
-        // 1. Validations first (atomic check)
-        foreach ($itemsData as $item) {
-            $poDetail = PurchaseOrderDetail::where('po_id', $po->id)
-                ->where('produk_id', $item['produk_id'])
-                ->first();
-
-            if (!$poDetail) {
-                return redirect()->back()->withInput()->with('error', 'Gagal: Produk ' . $item['produk_id'] . ' tidak ditemukan dalam Purchase Order ini.');
-            }
-
-            // Qty check
-            $remainingQty = $poDetail->qty_pesan - $poDetail->qty_diterima;
-            if ($item['qty_terima'] > $remainingQty) {
-                return redirect()->back()->withInput()->with('error', 'Gagal: Jumlah input barang datang untuk produk ' . $poDetail->product->nama_produk . ' melebihi kuantitas pesanan resmi (Sisa: ' . $remainingQty . ').');
-            }
-
-            // Expired date check
-            $expDate = Carbon::parse($item['expired_date']);
-            if ($expDate->lte($today)) {
-                return redirect()->back()->withInput()->with('error', 'Gagal: Tanggal kedaluwarsa produk tidak valid atau sudah terlampaui!');
-            }
-        }
-
-        // 2. Process transactions inside Database Transaction
         DB::beginTransaction();
         try {
-            foreach ($itemsData as $item) {
-                $qty = (int)$item['qty_terima'];
+            $hasAnyReceive = false;
+            $now = Carbon::now();
 
-                // Smart Rack Recommendation:
-                // Find a rack that has enough available capacity, prioritize the one with the most available space.
-                $recommendedRack = Rack::orderByRaw('(kapasitas_maksimum_volume - kapasitas_terpakai) DESC')
-                    ->first();
+            foreach ($request->items as $item) {
+                $qtyDatang = (int)($item['qty_datang'] ?? 0);
+                if ($qtyDatang <= 0) continue;
 
-                if (!$recommendedRack || ($recommendedRack->kapasitas_maksimum_volume - $recommendedRack->kapasitas_terpakai) < $qty) {
-                    // If the best rack cannot hold it, find any rack or error out
-                    throw new \Exception('Gagal: Kapasitas seluruh rak tidak mencukupi untuk menampung ' . $qty . ' unit.');
+                $hasAnyReceive = true;
+                $qtyRusak = (int)($item['qty_rusak'] ?? 0);
+                $qtyDiterima = $qtyDatang - $qtyRusak;
+
+                // Validate Expired Date if qtyDiterima > 0
+                if ($qtyDiterima > 0) {
+                    if (empty($item['expired_date'])) {
+                        throw new \Exception('Tanggal Expired wajib diisi untuk barang yang diterima dengan kondisi baik (Produk: ' . $item['produk_id'] . ').');
+                    }
+                    $expDate = Carbon::parse($item['expired_date']);
+                    if ($expDate->lte($now->copy()->startOfDay())) {
+                        throw new \Exception('Tanggal Expired tidak boleh kurang dari atau sama dengan hari ini (Produk: ' . $item['produk_id'] . ').');
+                    }
+                    if (empty($item['rak_id'])) {
+                        throw new \Exception('Rak penyimpanan wajib dipilih untuk barang yang diterima (Produk: ' . $item['produk_id'] . ').');
+                    }
                 }
 
-                // Create the batch inbound
-                BatchInbound::create([
-                    'batch_number' => $item['batch_number'],
-                    'produk_id' => $item['produk_id'],
-                    'po_id' => $po->id,
-                    'rak_id' => $recommendedRack->kode_rak,
-                    'expired_date' => $item['expired_date'],
-                    'stok_awal_batch' => $qty,
-                    'stok_sisa_batch' => $qty,
-                ]);
+                // Determine Kondisi Barang & Status Retur
+                $kondisiBarang = 'Baik';
+                $statusRetur = null;
+                
+                if ($qtyRusak > 0) {
+                    $statusRetur = 'Menunggu Retur';
+                    if ($qtyDiterima > 0) {
+                        $kondisiBarang = 'Rusak Sebagian';
+                    } else {
+                        $kondisiBarang = 'Ditolak';
+                    }
+                }
 
-                // Update PO detail received quantity
                 $poDetail = PurchaseOrderDetail::where('po_id', $po->id)
                     ->where('produk_id', $item['produk_id'])
                     ->first();
-                $poDetail->qty_diterima += $qty;
-                $poDetail->save();
 
-                // Save receiving history record
+                if (!$poDetail) {
+                    throw new \Exception('Item ' . $item['produk_id'] . ' tidak ditemukan pada PO ini.');
+                }
+
+                // Remaining validation
+                $remaining = $poDetail->qty_pesan - $poDetail->qty_diterima;
+                if ($qtyDiterima > $remaining) {
+                    throw new \Exception('Qty Diterima (Baik) untuk produk ' . $item['produk_id'] . ' (' . $qtyDiterima . ') melebihi sisa pesanan (' . $remaining . ').');
+                }
+
+                $batchInternal = null;
+
+                // Process Inbound for good items
+                if ($qtyDiterima > 0) {
+                    $rack = Rack::where('kode_rak', $item['rak_id'])->first();
+                    if (($rack->kapasitas_maksimum_volume - $rack->kapasitas_terpakai) < $qtyDiterima) {
+                        throw new \Exception('Kapasitas Rak ' . $rack->nama_rak . ' tidak mencukupi untuk ' . $qtyDiterima . ' unit.');
+                    }
+
+                    $batchInternal = 'BTC-PO' . $po->id . '-' . $item['produk_id'] . '-' . time();
+
+                    BatchInbound::create([
+                        'batch_number' => $batchInternal,
+                        'batch_supplier' => $item['batch_supplier'] ?? null,
+                        'produk_id' => $item['produk_id'],
+                        'po_id' => $po->id,
+                        'rak_id' => $rack->kode_rak,
+                        'expired_date' => $item['expired_date'],
+                        'stok_awal_batch' => $qtyDiterima,
+                        'stok_sisa_batch' => $qtyDiterima,
+                    ]);
+
+                    $rack->kapasitas_terpakai += $qtyDiterima;
+                    $rack->save();
+
+                    $poDetail->qty_diterima += $qtyDiterima;
+                    $poDetail->save();
+                }
+
+                // Determine catatan
+                $catatan = null;
+                if (!empty($item['alasan_kerusakan']) && $item['alasan_kerusakan'] === 'Lainnya') {
+                    $catatan = $item['catatan'] ?? null;
+                } else if (!empty($item['catatan'])) {
+                    $catatan = $item['catatan'];
+                }
+
+                // Save History
                 PoReceivingHistory::create([
                     'po_id' => $po->id,
                     'produk_id' => $item['produk_id'],
-                    'qty_received' => $qty,
-                    'batch_number' => $item['batch_number'],
-                    'received_at' => Carbon::now(),
+                    'qty_datang' => $qtyDatang,
+                    'qty_rusak' => $qtyRusak,
+                    'qty_received' => $qtyDiterima, // qty_received is equivalent to qty_diterima
+                    'kondisi_barang' => $kondisiBarang,
+                    'alasan_kerusakan' => $qtyRusak > 0 ? $item['alasan_kerusakan'] : null,
+                    'catatan' => $catatan,
+                    'batch_number' => $batchInternal,
+                    'batch_supplier' => $item['batch_supplier'] ?? null,
+                    'expired_date' => $qtyDiterima > 0 ? $item['expired_date'] : null,
+                    'rak_id' => $qtyDiterima > 0 ? $item['rak_id'] : null,
+                    'status_retur' => $statusRetur,
+                    'received_at' => $now,
                     'received_by' => auth()->id(),
                 ]);
-
-                // Update rack used capacity
-                $recommendedRack->kapasitas_terpakai += $qty;
-                $recommendedRack->save();
             }
 
-            // Check if PO is now completed (all items received)
+            if (!$hasAnyReceive) {
+                throw new \Exception('Tidak ada data penerimaan yang diisi.');
+            }
+
+            // Update PO Status
             $allReceived = true;
             $anyReceived = false;
+            
+            // Re-fetch details to check totals
             $updatedDetails = PurchaseOrderDetail::where('po_id', $po->id)->get();
-            foreach ($updatedDetails as $detail) {
-                if ($detail->qty_diterima > 0) {
+            foreach ($updatedDetails as $d) {
+                if ($d->qty_diterima > 0) {
                     $anyReceived = true;
                 }
-                if ($detail->qty_pesan > $detail->qty_diterima) {
+                if ($d->qty_pesan > $d->qty_diterima) {
                     $allReceived = false;
                 }
             }
 
             if ($allReceived) {
                 $po->status = 'Completed';
-                $po->save();
             } elseif ($anyReceived) {
-                $po->status = 'Partial';
-                $po->save();
+                $po->status = 'Partially Received';
+            } else {
+                $po->status = 'Ordered';
             }
+            $po->save();
 
             DB::commit();
-            return redirect()->route('inbound.index')->with('success', 'Barang masuk berhasil didaftarkan dan diletakkan di rak rekomendasi.');
+            return redirect()->route('inbound.index')->with('success', 'Berhasil memproses penerimaan barang (Inbound). Stok telah bertambah sesuai jumlah barang yang diterima dalam kondisi baik.');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal memproses penerimaan: ' . $e->getMessage());
         }
+    }
+
+    public function updateRetur(Request $request, $id, $historyId)
+    {
+        $po = PurchaseOrder::findOrFail($id);
+        $history = PoReceivingHistory::where('po_id', $po->id)->findOrFail($historyId);
+
+        $request->validate([
+            'status_retur' => 'required|in:Menunggu Retur,Sudah Diretur',
+            'tanggal_retur' => 'required_if:status_retur,Sudah Diretur|nullable|date',
+            'catatan_retur' => 'nullable|string'
+        ]);
+
+        $history->status_retur = $request->status_retur;
+        
+        if ($request->status_retur === 'Sudah Diretur') {
+            $history->tanggal_retur = $request->tanggal_retur;
+            $history->catatan_retur = $request->catatan_retur;
+        } else {
+            $history->tanggal_retur = null;
+            $history->catatan_retur = null;
+        }
+
+        $history->save();
+
+        return redirect()->route('po.show', $po->id)->with('success', 'Status retur berhasil diperbarui.');
     }
 }

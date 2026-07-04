@@ -35,18 +35,16 @@
                             <td>
                                 @if($po->status === 'Draft')
                                     <span class="badge badge-blue">Draft</span>
-                                @elseif($po->status === 'Pending Approval')
-                                    <span class="badge badge-yellow pulse-indicator">Pending Approval</span>
-                                @elseif($po->status === 'Approved')
-                                    <span class="badge badge-green">Approved</span>
-                                @elseif($po->status === 'Partial')
-                                    <span class="badge badge-yellow">🟡 Partial</span>
+                                @elseif($po->status === 'Ordered')
+                                    <span class="badge badge-yellow pulse-indicator">Ordered</span>
+                                @elseif($po->status === 'Partially Received')
+                                    <span class="badge badge-yellow">🟡 Partially Received</span>
                                 @elseif($po->status === 'Completed')
                                     <span class="badge badge-green">🟢 Completed</span>
                                 @elseif($po->status === 'Cancelled')
                                     <span class="badge badge-red">🔴 Cancelled</span>
                                 @else
-                                    <span class="badge badge-red">Rejected</span>
+                                    <span class="badge badge-red">{{ $po->status }}</span>
                                 @endif
                             </td>
                             <td>{{ $po->created_at->format('d M Y') }}</td>
@@ -55,27 +53,12 @@
                                     <a href="{{ route('po.show', $po->id) }}" class="btn btn-secondary" style="padding: 5px 10px; min-height:36px; min-width:36px; font-size: 0.8rem;">
                                         Detail
                                     </a>
-                                    {{-- Submit for approval (Admin, Draft only) --}}
+                                    {{-- Order to Supplier (Admin, Draft only) --}}
                                     @if($po->status === 'Draft' && auth()->user()->role === 'admin_gudang')
-                                        <form action="{{ route('po.submit', $po->id) }}" method="POST" style="display:inline;">
+                                        <form action="{{ route('po.order', $po->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Pesan PO ini ke Supplier?');">
                                             @csrf
                                             <button type="submit" class="btn btn-primary" style="padding: 5px 10px; min-height:36px; min-width:36px; font-size: 0.8rem;">
-                                                Ajukan
-                                            </button>
-                                        </form>
-                                    @endif
-                                    {{-- Owner Approval Buttons --}}
-                                    @if($po->status === 'Pending Approval' && auth()->user()->role === 'owner')
-                                        <form action="{{ route('po.approve', $po->id) }}" method="POST" style="display:inline;">
-                                            @csrf
-                                            <button type="submit" class="btn btn-success" style="padding: 5px 10px; min-height:36px; min-width:36px; font-size: 0.8rem;">
-                                                Setujui
-                                            </button>
-                                        </form>
-                                        <form action="{{ route('po.reject', $po->id) }}" method="POST" onsubmit="return confirm('Tolak PO ini?');" style="display:inline;">
-                                            @csrf
-                                            <button type="submit" class="btn btn-danger" style="padding: 5px 10px; min-height:36px; min-width:36px; font-size: 0.8rem;">
-                                                Tolak
+                                                Pesan
                                             </button>
                                         </form>
                                     @endif

@@ -41,12 +41,14 @@ class ProductController extends Controller
 
     public function create()
     {
+        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
         $categories = Category::all();
         return view('product.create', compact('categories'));
     }
 
     public function store(Request $request)
     {
+        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
         $rules = [
             'kode_produk' => 'required|string|unique:m_products,kode_produk',
             'nama_produk' => 'required|string|max:255',
@@ -88,6 +90,7 @@ class ProductController extends Controller
 
     public function edit($kode_produk)
     {
+        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
         $product = Product::findOrFail($kode_produk);
         $categories = Category::all();
         return view('product.edit', compact('product', 'categories'));
@@ -95,6 +98,7 @@ class ProductController extends Controller
 
     public function update(Request $request, $kode_produk)
     {
+        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
         $product = Product::findOrFail($kode_produk);
 
         $rules = [
@@ -136,6 +140,7 @@ class ProductController extends Controller
 
     public function destroy($kode_produk)
     {
+        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
         $product = Product::findOrFail($kode_produk);
         $product->delete();
 

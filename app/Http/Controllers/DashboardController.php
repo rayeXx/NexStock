@@ -12,6 +12,7 @@ use App\Models\OutboundDetail;
 use App\Models\Outbound;
 use App\Models\DamagedReport;
 use App\Models\StockOpnameDetail;
+use App\Models\PoReceivingHistory;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -30,11 +31,6 @@ class DashboardController extends Controller
             $totalStok = $product->total_stok;
             $hargaBeli = (double)$product->harga_beli; // Decrypts automatically
             $totalAsetValue += $totalStok * $hargaBeli;
-        }
-
-        // Dummy data for testing if total asset is 0
-        if ($totalAsetValue == 0) {
-            $totalAsetValue = 125000000; // Rp 125.000.000 dummy
         }
 
         // 2. KPI: Persentase Ranking Efisiensi Pengiriman Pemasok (Supplier Performance)
@@ -176,7 +172,7 @@ class DashboardController extends Controller
             'total_stok' => BatchInbound::sum('stok_sisa_batch'),
             'total_rak' => Rack::count(),
             'total_supplier' => Supplier::count(),
-            'karantina_count' => DamagedReport::where('status', 'Pending')->count(),
+            'karantina_count' => DamagedReport::count(),
             'barang_hampir_habis' => 0,
             'inbound_hari_ini' => BatchInbound::whereDate('created_at', $today)->sum('stok_awal_batch'),
             'outbound_hari_ini' => OutboundDetail::whereHas('outbound', fn($q) => $q->whereDate('tanggal_keluar', $today))->sum('qty_keluar'),
@@ -191,9 +187,14 @@ class DashboardController extends Controller
 
         // PO stats (for Owner dashboard)
         $poStats = [
-            'pending' => PurchaseOrder::where('status', 'Pending Approval')->count(),
-            'partial' => PurchaseOrder::where('status', 'Partial')->count(),
+            'ordered' => PurchaseOrder::where('status', 'Ordered')->count(),
+            'partial' => PurchaseOrder::where('status', 'Partially Received')->count(),
             'completed' => PurchaseOrder::where('status', 'Completed')->count(),
+            'damaged_today' => PoReceivingHistory::where('qty_rusak', '>', 0)->whereDate('received_at', Carbon::today())->sum('qty_rusak'),
+            'damaged_week' => PoReceivingHistory::where('qty_rusak', '>', 0)->where('received_at', '>=', Carbon::today()->startOfWeek())->sum('qty_rusak'),
+            'damaged_month' => PoReceivingHistory::where('qty_rusak', '>', 0)->whereMonth('received_at', Carbon::now()->month)->whereYear('received_at', Carbon::now()->year)->sum('qty_rusak'),
+            'menunggu_retur' => PoReceivingHistory::where('status_retur', 'Menunggu Retur')->count(),
+            'sudah_diretur' => PoReceivingHistory::where('status_retur', 'Sudah Diretur')->count(),
         ];
 
         // 6. Chart Data: Sales/Outbound (for Owner only)
@@ -264,44 +265,6 @@ class DashboardController extends Controller
 
             $chartThirtyLabels = $salesThirty->map(fn($item) => Carbon::parse($item->date)->format('d M'))->toArray();
             $chartThirtyData = $salesThirty->pluck('total_qty')->map(fn($v) => (int)$v)->toArray();
-
-            // Dummy data fallback if no real data exists
-            if (empty($chartMonthData)) {
-                $daysInMonth = Carbon::now()->daysInMonth;
-                for ($d = 1; $d <= $daysInMonth; $d++) {
-                    $date = Carbon::create($currentYear, $currentMonth, $d);
-                    if ($date->gt(Carbon::now())) break;
-                    $chartMonthLabels[] = $date->format('d M');
-                    $chartMonthData[] = rand(15, 120);
-                }
-            }
-
-            if (empty($chartWeekData)) {
-                for ($i = 6; $i >= 0; $i--) {
-                    $date = Carbon::now()->subDays($i);
-                    $chartWeekLabels[] = $date->format('D, d M');
-                    $chartWeekData[] = rand(10, 80);
-                }
-            }
-
-            if (empty($chartTodayData)) {
-                for ($h = 8; $h <= Carbon::now()->hour; $h++) {
-                    $chartTodayLabels[] = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00';
-                    $chartTodayData[] = rand(5, 50);
-                }
-                if (empty($chartTodayData)) {
-                    $chartTodayLabels = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00'];
-                    $chartTodayData = [12, 25, 18, 32, 8, 21];
-                }
-            }
-
-            if (empty($chartThirtyData)) {
-                for ($i = 29; $i >= 0; $i--) {
-                    $date = Carbon::now()->subDays($i);
-                    $chartThirtyLabels[] = $date->format('d M');
-                    $chartThirtyData[] = rand(10, 100);
-                }
-            }
 
             // Top 5 Best Selling Products (30 hari terakhir)
             $topSelling = DB::table('t_outbound_details')

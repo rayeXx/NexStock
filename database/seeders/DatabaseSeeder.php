@@ -69,6 +69,5 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 5. Seed realistic demo data (products, batches, outbound transactions)
-        $this->call(DemoDataSeeder::class);
     }
 }

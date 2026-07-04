@@ -45,11 +45,6 @@
                                             {{ $product->nama_produk }} (Stok: {{ $product->total_stok }} {{ $product->uom }})
                                         </option>
                                     @endforeach
-                                    @foreach($dummyProducts as $dp)
-                                        <option value="{{ $dp->kode_produk }}">
-                                            {{ $dp->nama_produk }} (Stok: {{ $dp->__dummy_stok }} {{ $dp->uom }}) [Simulasi]
-                                        </option>
-                                    @endforeach
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
@@ -77,16 +72,11 @@
 
     <script>
         const products = @json($products->values());
-        const dummyProducts = @json($dummyProducts->values());
         let outboundCount = 1;
 
         function buildProductOptions() {
             let options = products.map(p =>
                 `<option value="${p.kode_produk}">${p.nama_produk} (Stok: ${p.total_stok} ${p.uom})</option>`
-            ).join('');
-
-            options += dummyProducts.map(p =>
-                `<option value="${p.kode_produk}">${p.nama_produk} (Stok: ${p.__dummy_stok} ${p.uom}) [Simulasi]</option>`
             ).join('');
 
             return options;
