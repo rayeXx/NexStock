@@ -47,4 +47,21 @@ class Product extends Model
     {
         return $this->batchInbounds()->sum('stok_sisa_batch');
     }
+
+    // Accessor for stock status badge
+    public function getStockStatusAttribute(): string
+    {
+        $stok = $this->total_stok;
+        $min = $this->stok_minimum;
+
+        if ($stok <= $min) {
+            return 'Kritis';
+        }
+
+        if ($stok <= $min * 1.5) {
+            return 'Menipis';
+        }
+
+        return 'Aman';
+    }
 }

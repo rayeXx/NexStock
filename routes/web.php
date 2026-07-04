@@ -23,6 +23,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Main Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/restock-filter', [DashboardController::class, 'restockFilter'])->name('dashboard.restock-filter');
 
     // Profile Management
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

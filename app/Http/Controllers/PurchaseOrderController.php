@@ -21,7 +21,7 @@ class PurchaseOrderController extends Controller
     // Show single PO details
     public function show($id)
     {
-        $po = PurchaseOrder::with(['supplier', 'creator', 'details.product'])->findOrFail($id);
+        $po = PurchaseOrder::with(['supplier', 'creator', 'details.product', 'receivingHistory.product', 'receivingHistory.receiver'])->findOrFail($id);
         return view('po.show', compact('po'));
     }
 

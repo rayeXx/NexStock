@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderDetail;
 use App\Models\BatchInbound;
+use App\Models\PoReceivingHistory;
 use App\Models\Rack;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -105,7 +106,7 @@ class InboundController extends Controller
             } else {
                 $selectedPo = PurchaseOrder::where('id', $po_id)->first();
                 if ($selectedPo) {
-                    if ($selectedPo->status !== 'Approved') {
+                    if (!in_array($selectedPo->status, ['Approved', 'Partial'])) {
                         return redirect()->route('inbound.create')
                             ->with('error', 'Akses Ditolak: Dokumen PO Belum Disetujui Owner atau Tidak Ditemukan');
                     }
@@ -119,8 +120,8 @@ class InboundController extends Controller
             }
         }
 
-        // List approved POs that are not completed yet
-        $approvedPos = PurchaseOrder::where('status', 'Approved')
+        // List approved or partial POs that are not completed yet
+        $approvedPos = PurchaseOrder::whereIn('status', ['Approved', 'Partial'])
             ->whereHas('details', function($query) {
                 $query->whereRaw('qty_pesan > qty_diterima');
             })->get();
@@ -155,7 +156,7 @@ class InboundController extends Controller
         ]);
 
         $po = PurchaseOrder::findOrFail($request->po_id);
-        if ($po->status !== 'Approved') {
+        if (!in_array($po->status, ['Approved', 'Partial'])) {
             return redirect()->back()->with('error', 'Akses Ditolak: Dokumen PO Belum Disetujui Owner atau Tidak Ditemukan');
         }
 
@@ -219,6 +220,16 @@ class InboundController extends Controller
                 $poDetail->qty_diterima += $qty;
                 $poDetail->save();
 
+                // Save receiving history record
+                PoReceivingHistory::create([
+                    'po_id' => $po->id,
+                    'produk_id' => $item['produk_id'],
+                    'qty_received' => $qty,
+                    'batch_number' => $item['batch_number'],
+                    'received_at' => Carbon::now(),
+                    'received_by' => auth()->id(),
+                ]);
+
                 // Update rack used capacity
                 $recommendedRack->kapasitas_terpakai += $qty;
                 $recommendedRack->save();
@@ -226,16 +237,22 @@ class InboundController extends Controller
 
             // Check if PO is now completed (all items received)
             $allReceived = true;
+            $anyReceived = false;
             $updatedDetails = PurchaseOrderDetail::where('po_id', $po->id)->get();
             foreach ($updatedDetails as $detail) {
+                if ($detail->qty_diterima > 0) {
+                    $anyReceived = true;
+                }
                 if ($detail->qty_pesan > $detail->qty_diterima) {
                     $allReceived = false;
-                    break;
                 }
             }
 
             if ($allReceived) {
                 $po->status = 'Completed';
+                $po->save();
+            } elseif ($anyReceived) {
+                $po->status = 'Partial';
                 $po->save();
             }
 

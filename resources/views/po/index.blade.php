@@ -39,8 +39,12 @@
                                     <span class="badge badge-yellow pulse-indicator">Pending Approval</span>
                                 @elseif($po->status === 'Approved')
                                     <span class="badge badge-green">Approved</span>
+                                @elseif($po->status === 'Partial')
+                                    <span class="badge badge-yellow">🟡 Partial</span>
                                 @elseif($po->status === 'Completed')
-                                    <span class="badge badge-green">Completed</span>
+                                    <span class="badge badge-green">🟢 Completed</span>
+                                @elseif($po->status === 'Cancelled')
+                                    <span class="badge badge-red">🔴 Cancelled</span>
                                 @else
                                     <span class="badge badge-red">Rejected</span>
                                 @endif

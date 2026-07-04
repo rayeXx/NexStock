@@ -18,8 +18,12 @@
                     <span class="badge badge-yellow pulse-indicator">Menunggu Persetujuan Owner</span>
                 @elseif($po->status === 'Approved')
                     <span class="badge badge-green">Disetujui (Approved)</span>
+                @elseif($po->status === 'Partial')
+                    <span class="badge badge-yellow">🟡 Partial</span>
                 @elseif($po->status === 'Completed')
-                    <span class="badge badge-green">Selesai (Completed)</span>
+                    <span class="badge badge-green">🟢 Completed</span>
+                @elseif($po->status === 'Cancelled')
+                    <span class="badge badge-red">🔴 Cancelled</span>
                 @else
                     <span class="badge badge-red">Ditolak (Rejected)</span>
                 @endif
@@ -58,7 +62,7 @@
                     </form>
                 @endif
 
-                @if($po->status === 'Approved')
+                @if(in_array($po->status, ['Approved', 'Partial']))
                     <a href="{{ route('inbound.create', ['po_id' => $po->id]) }}" class="btn btn-success">
                         → Proses Penerimaan Barang Masuk
                     </a>
@@ -78,7 +82,7 @@
                             <th>Satuan</th>
                             <th>Qty Dipesan</th>
                             <th>Qty Diterima</th>
-                            <th>Sisa Belum Terima</th>
+                            <th>Qty Sisa</th>
                             <th>Status Penerimaan</th>
                         </tr>
                     </thead>
@@ -108,11 +112,11 @@
                                 </td>
                                 <td>
                                     @if($detail->qty_diterima >= $detail->qty_pesan)
-                                        <span class="badge badge-green">Selesai</span>
+                                        <span class="badge badge-green">🟢 Selesai</span>
                                     @elseif($detail->qty_diterima > 0)
-                                        <span class="badge badge-yellow">Sebagian</span>
+                                        <span class="badge badge-yellow">🟡 Partial</span>
                                     @else
-                                        <span class="badge badge-red">Belum Diterima</span>
+                                        <span class="badge" style="background:rgba(148,163,184,0.15); color:#94a3b8;">⚪ Pending</span>
                                     @endif
                                 </td>
                             </tr>
@@ -121,5 +125,42 @@
                 </table>
             </div>
         </div>
+
+        {{-- Receiving History --}}
+        @if($po->receivingHistory && $po->receivingHistory->count() > 0)
+        <div class="glass-card">
+            <div class="card-title">
+                <span>Riwayat Penerimaan Barang</span>
+                <span class="badge badge-blue">{{ $po->receivingHistory->count() }} Penerimaan</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table-premium">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Produk</th>
+                            <th>Qty Diterima</th>
+                            <th>No. Batch</th>
+                            <th>Diterima Oleh</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($po->receivingHistory->sortByDesc('received_at') as $history)
+                            <tr>
+                                <td>{{ $history->received_at->format('d M Y, H:i') }}</td>
+                                <td>
+                                    <strong>{{ $history->product->nama_produk }}</strong><br>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">{{ $history->produk_id }}</span>
+                                </td>
+                                <td><strong style="color: var(--accent-green);">{{ $history->qty_received }} {{ $history->product->uom }}</strong></td>
+                                <td><code>{{ $history->batch_number }}</code></td>
+                                <td>{{ $history->receiver->name }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
     </div>
 </x-app-layout>

@@ -310,6 +310,12 @@ select.form-control::-ms-expand {
     gap: 1.5rem;
 }
 
+.grid-4 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
 @media (min-width: 768px) {
     .grid-2 {
         grid-template-columns: repeat(2, 1fr);
@@ -317,11 +323,17 @@ select.form-control::-ms-expand {
     .grid-3 {
         grid-template-columns: repeat(2, 1fr);
     }
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (min-width: 1024px) {
     .grid-3 {
         grid-template-columns: repeat(3, 1fr);
+    }
+    .grid-4 {
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 

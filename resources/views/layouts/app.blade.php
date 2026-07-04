@@ -118,6 +118,7 @@
                     <span>Dashboard</span>
                 </a>
 
+                @if(auth()->user()->role !== 'owner')
                 <div class="nav-section-title" style="margin-top: 1.25rem;">Transaksi</div>
 
                 <a href="{{ route('inbound.index') }}" class="sidebar-nav-link {{ request()->routeIs('inbound.*') ? 'active' : '' }}">
@@ -155,11 +156,13 @@
                     </svg>
                     <span>Stock Opname</span>
                 </a>
+                @endif
 
                 <!-- Admin & Owner Master Data / Procurement -->
                 @if(auth()->user()->role === 'admin_gudang' || auth()->user()->role === 'owner')
-                    <div class="nav-section-title" style="margin-top: 1.25rem;">Administrasi & Data</div>
+                    <div class="nav-section-title" style="margin-top: 1.25rem;">{{ auth()->user()->role === 'owner' ? 'Monitoring' : 'Administrasi & Data' }}</div>
 
+                    @if(auth()->user()->role === 'admin_gudang')
                     <a href="{{ route('po.index') }}" class="sidebar-nav-link {{ request()->routeIs('po.*') ? 'active' : '' }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -167,8 +170,9 @@
                             <line x1="16" y1="13" x2="8" y2="13"></line>
                             <line x1="16" y1="17" x2="8" y2="17"></line>
                         </svg>
-                        <span>{{ auth()->user()->role === 'owner' ? 'Persetujuan PO' : 'Daftar PO' }}</span>
+                        <span>Daftar PO</span>
                     </a>
+                    @endif
 
                     <a href="{{ route('product.index') }}" class="sidebar-nav-link {{ request()->routeIs('product.*') ? 'active' : '' }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -180,6 +184,7 @@
                         <span>Master Produk</span>
                     </a>
 
+                    @if(auth()->user()->role === 'admin_gudang')
                     <a href="{{ route('supplier.index') }}" class="sidebar-nav-link {{ request()->routeIs('supplier.*') ? 'active' : '' }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -199,6 +204,7 @@
                         </svg>
                         <span>Master Rak</span>
                     </a>
+                    @endif
                 @endif
 
                 <!-- Admin Only User Management -->

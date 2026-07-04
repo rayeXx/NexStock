@@ -67,5 +67,8 @@ class DatabaseSeeder extends Seeder
         Supplier::firstOrCreate(['nama_supplier' => 'CV Sumber Pangan'], [
             'kontak' => '081122334455 (Joko)',
         ]);
+
+        // 5. Seed realistic demo data (products, batches, outbound transactions)
+        $this->call(DemoDataSeeder::class);
     }
 }

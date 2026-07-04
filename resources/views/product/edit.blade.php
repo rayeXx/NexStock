@@ -25,13 +25,35 @@
 
             <div class="form-group">
                 <label class="form-label" for="kategori_id">Kategori Produk *</label>
-                <select name="kategori_id" id="kategori_id" class="form-control" required>
+                <select name="kategori_id" id="kategori_id" class="form-control" required onchange="toggleLainnya(this)">
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" {{ old('kategori_id', $product->kategori_id) == $category->id ? 'selected' : '' }}>
                             {{ $category->nama_kategori }}
                         </option>
                     @endforeach
+                    <option value="lainnya" {{ old('kategori_id') == 'lainnya' ? 'selected' : '' }}>Lainnya</option>
                 </select>
+            </div>
+
+            {{-- Dynamic fields for "Lainnya" --}}
+            <div id="kategoriLainnyaFields" style="display: {{ old('kategori_id') == 'lainnya' ? 'block' : 'none' }}; transition: all 0.3s ease;">
+                <div class="form-group" style="background:rgba(129,140,248,0.05); border:1px solid rgba(129,140,248,0.15); border-radius:0.75rem; padding:1rem 1.25rem; margin-bottom:1rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                        <span style="font-size:0.82rem; font-weight:600; color:#818cf8;">Kategori Baru</span>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem;">
+                        <label class="form-label" for="nama_kategori_baru">Nama Kategori Baru *</label>
+                        <input type="text" name="nama_kategori_baru" id="nama_kategori_baru" class="form-control" placeholder="Contoh: Peralatan Kebersihan" value="{{ old('nama_kategori_baru') }}">
+                        @error('nama_kategori_baru')
+                            <p style="color: var(--accent-red); font-size: 0.78rem; margin-top: 0.25rem;">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label" for="catatan">Catatan (Opsional)</label>
+                        <input type="text" name="catatan" id="catatan" class="form-control" placeholder="Contoh: Produk non-konsumsi" value="{{ old('catatan') }}">
+                    </div>
+                </div>
             </div>
 
             <div class="grid-2">
@@ -65,4 +87,23 @@
             </div>
         </form>
     </div>
+
+    <script>
+    function toggleLainnya(select) {
+        const fields = document.getElementById('kategoriLainnyaFields');
+        const namaInput = document.getElementById('nama_kategori_baru');
+        if (select.value === 'lainnya') {
+            fields.style.display = 'block';
+            namaInput.setAttribute('required', 'required');
+        } else {
+            fields.style.display = 'none';
+            namaInput.removeAttribute('required');
+            namaInput.value = '';
+            document.getElementById('catatan').value = '';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleLainnya(document.getElementById('kategori_id'));
+    });
+    </script>
 </x-app-layout>

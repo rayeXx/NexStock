@@ -32,4 +32,9 @@ class PurchaseOrder extends Model
     {
         return $this->hasMany(PurchaseOrderDetail::class, 'po_id', 'id');
     }
+
+    public function receivingHistory(): HasMany
+    {
+        return $this->hasMany(PoReceivingHistory::class, 'po_id', 'id');
+    }
 }
