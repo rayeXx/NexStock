@@ -17,7 +17,7 @@
             <ol>
                 <li>Hitung stok fisik setiap batch di rak gudang secara aktual.</li>
                 <li>Masukkan angka hasil hitungan di kolom <strong>"Qty Fisik"</strong> tanpa melihat angka sistem.</li>
-                <li>Sistem akan menghitung selisih dan melakukan penyesuaian database secara otomatis.</li>
+                <li>Hasil audit akan diajukan ke Owner / Admin untuk disahkan sebelum stok sistem diperbarui.</li>
             </ol>
         </div>
 
@@ -62,8 +62,8 @@
                 </div>
 
                 <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;" onclick="return confirm('Simpan hasil opname ini? Stok sistem akan disesuaikan.')">
-                        ✓ Simpan Hasil Opname & Rekonsiliasi Stok
+                    <button type="submit" class="btn btn-primary" style="flex: 1;" onclick="return confirm('Ajukan hasil opname ini untuk disetujui Owner / Admin?')">
+                        ✓ Ajukan Hasil Opname untuk Persetujuan
                     </button>
                     <a href="{{ route('opname.index') }}" class="btn btn-secondary" style="flex: 1;">
                         Batal

@@ -4,9 +4,11 @@
             <h1>Riwayat Barang Keluar (Outbound)</h1>
             <p>Histori pengurangan stok berbasis FEFO — produk dengan tanggal kedaluwarsa terdekat dikeluarkan terlebih dahulu.</p>
         </div>
+        @if(auth()->user()->role !== 'admin_gudang')
         <a href="{{ route('outbound.create') }}" class="btn btn-primary">
             + Proses Barang Keluar
         </a>
+        @endif
     </div>
 
     {{-- Live Search --}}
@@ -18,6 +20,40 @@
             <input type="text" id="outboundSearch" class="form-control" placeholder="Cari nomor outbound, tujuan, atau nama produk..." style="padding-left:38px; min-height:40px; font-size:0.88rem;">
         </div>
     </div>
+
+    @if(session('instructions'))
+        <div class="glass-card" style="margin-bottom: 1.5rem; border-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); padding: 1.5rem;">
+            <h3 style="color: var(--accent-green); font-size: 1.05rem; font-weight: 700; margin-top: 0; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 11l3 3L22 4"></path>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                </svg>
+                Instruksi Pengambilan Barang (Picking Slip)
+            </h3>
+            <div class="table-responsive">
+                <table class="table-premium" style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>Nama Produk</th>
+                            <th>Qty Diambil</th>
+                            <th>Lokasi Rak</th>
+                            <th>Nomor Batch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(session('instructions') as $inst)
+                            <tr>
+                                <td><strong>{{ $inst['produk'] }}</strong></td>
+                                <td><strong style="color: var(--accent-green);">{{ $inst['qty'] }}</strong></td>
+                                <td><span class="badge badge-blue">Rak {{ $inst['rak'] }}</span></td>
+                                <td><code>{{ $inst['batch'] }}</code></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
 
     <div class="glass-card">
         <div class="table-responsive">
@@ -40,9 +76,9 @@
                             <td>{{ $outbound->details->count() }} jenis produk</td>
                             <td>
                                 @foreach($outbound->details as $detail)
-                                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
                                         {{ $detail->product->nama_produk }} — <strong>{{ $detail->qty_keluar }} {{ $detail->product->uom }}</strong>
-                                        (Batch: <code>{{ $detail->batch_number }}</code>)
+                                        (Batch: <code>{{ $detail->batch_number }}</code> | Lokasi: <span class="badge badge-blue">Rak {{ $detail->rak_id ?? ($detail->batchInbound->rak_id ?? '-') }}</span>)
                                     </div>
                                 @endforeach
                             </td>

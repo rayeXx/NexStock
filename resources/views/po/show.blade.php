@@ -34,6 +34,16 @@
                 </div>
                 <div>
                     <p style="margin-bottom: 0.25rem;"><strong>Tgl. Dibuat:</strong> {{ $po->created_at->format('d F Y, H:i') }}</p>
+                    <p style="margin-bottom: 0.25rem;">
+                        <strong>Target Tgl. Kirim:</strong>
+                        @if($po->target_tanggal_kirim)
+                            <span style="color: var(--accent-yellow); font-weight: 600;">
+                                {{ $po->target_tanggal_kirim->format('d F Y') }}
+                            </span>
+                        @else
+                            <span style="color: var(--text-muted);">—</span>
+                        @endif
+                    </p>
                     <p style="margin-bottom: 0;"><strong>Total Nilai Pengadaan:</strong>
                         <span style="color: var(--accent-blue); font-size: 1.1rem; font-weight: 700;">Rp {{ number_format($po->total_harga, 0, ',', '.') }}</span>
                     </p>
@@ -62,7 +72,9 @@
                             <th>Kode SKU</th>
                             <th>Nama Produk</th>
                             <th>Satuan</th>
+                            <th>Harga Satuan</th>
                             <th>Qty Dipesan</th>
+                            <th>Subtotal</th>
                             <th>Qty Diterima</th>
                             <th>Qty Sisa</th>
                             <th>Status Penerimaan</th>
@@ -71,13 +83,28 @@
                     <tbody>
                         @foreach($po->details as $detail)
                             @php
-                                $sisaQty = $detail->qty_pesan - $detail->qty_diterima;
+                                $sisaQty  = $detail->qty_pesan - $detail->qty_diterima;
+                                $subtotal = $detail->harga_satuan ? $detail->harga_satuan * $detail->qty_pesan : null;
                             @endphp
                             <tr>
                                 <td><code>{{ $detail->produk_id }}</code></td>
                                 <td><strong>{{ $detail->product->nama_produk }}</strong></td>
                                 <td>{{ $detail->product->uom }}</td>
+                                <td>
+                                    @if($detail->harga_satuan)
+                                        Rp {{ number_format($detail->harga_satuan, 0, ',', '.') }}
+                                    @else
+                                        <span style="color:var(--text-muted);">—</span>
+                                    @endif
+                                </td>
                                 <td>{{ $detail->qty_pesan }}</td>
+                                <td>
+                                    @if($subtotal)
+                                        <strong style="color:var(--accent-blue);">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
+                                    @else
+                                        <span style="color:var(--text-muted);">—</span>
+                                    @endif
+                                </td>
                                 <td>
                                     @if($detail->qty_diterima > 0)
                                         <strong style="color: var(--accent-green);">{{ $detail->qty_diterima }}</strong>
@@ -181,10 +208,19 @@
                                 <td>{{ $history->rak_id ?? '-' }}</td>
                                 <td>{{ $history->receiver->name }}</td>
                                 <td>
-                                    @if($history->qty_rusak > 0 && auth()->user()->role === 'admin_gudang')
-                                        <button type="button" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openReturModal({{ $history->id }}, '{{ $history->status_retur }}', '{{ $history->tanggal_retur ? \Carbon\Carbon::parse($history->tanggal_retur)->format('Y-m-d') : '' }}', '{{ $history->catatan_retur ?? '' }}')">
-                                            Update Retur
-                                        </button>
+                                    @if($history->qty_rusak > 0)
+                                        @if(auth()->user()->role === 'admin_gudang' && $history->status_retur === 'Menunggu Retur')
+                                            <form action="{{ route('po.mark-as-returned', [$po->id, $history->id]) }}" method="POST" onsubmit="return confirm('Konfirmasi pengiriman retur barang ini kembali ke pabrik?')">
+                                                @csrf
+                                                <button type="submit" class="btn btn-success" style="padding:0.25rem 0.5rem; font-size:0.75rem; font-weight:600;">
+                                                    Konfirmasi Pengiriman Retur
+                                                </button>
+                                            </form>
+                                        @elseif(auth()->user()->role !== 'admin_gudang')
+                                            <button type="button" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openReturModal({{ $history->id }}, '{{ $history->status_retur }}', '{{ $history->tanggal_retur ? \Carbon\Carbon::parse($history->tanggal_retur)->format('Y-m-d') : '' }}', '{{ $history->catatan_retur ?? '' }}')">
+                                                Update Retur
+                                            </button>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>

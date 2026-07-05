@@ -19,6 +19,7 @@
                         <th>Dilakukan Oleh</th>
                         <th>Jml. Batch Diaudit</th>
                         <th>Total Selisih</th>
+                        <th>Status</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
@@ -39,6 +40,13 @@
                                     <span class="badge badge-yellow">+{{ $totalSelisih }} (Surplus)</span>
                                 @else
                                     <span class="badge badge-red">{{ $totalSelisih }} (Kekurangan)</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if(($opname->status ?? 'Approved') === 'Pending Approval')
+                                    <span class="badge badge-yellow">🟡 Pending Approval</span>
+                                @else
+                                    <span class="badge badge-green">🟢 Approved / Sah</span>
                                 @endif
                             </td>
                             <td>

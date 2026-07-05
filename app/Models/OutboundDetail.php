@@ -14,6 +14,8 @@ class OutboundDetail extends Model
         'produk_id',
         'batch_number',
         'qty_keluar',
+        'rak_id',
+        'batch_scanned',
     ];
 
     public function outbound(): BelongsTo
@@ -29,5 +31,10 @@ class OutboundDetail extends Model
     public function batchInbound(): BelongsTo
     {
         return $this->belongsTo(BatchInbound::class, 'batch_number', 'batch_number');
+    }
+
+    public function rack(): BelongsTo
+    {
+        return $this->belongsTo(Rack::class, 'rak_id', 'kode_rak');
     }
 }

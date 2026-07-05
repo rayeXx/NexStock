@@ -13,15 +13,24 @@ class StockOpname extends Model
     protected $fillable = [
         'tanggal_opname',
         'created_by',
+        'status',
+        'approved_by',
+        'approved_at',
     ];
 
     protected $casts = [
         'tanggal_opname' => 'date',
+        'approved_at' => 'datetime',
     ];
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by', 'id');
     }
 
     public function details(): HasMany

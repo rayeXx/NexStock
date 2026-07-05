@@ -35,7 +35,7 @@ class StockOpnameController extends Controller
         return view('opname.create', compact('batches'));
     }
 
-    // Store opname results
+    // Store opname results (Pending Approval)
     public function store(Request $request)
     {
         $request->validate([
@@ -51,6 +51,7 @@ class StockOpnameController extends Controller
             $opname = StockOpname::create([
                 'tanggal_opname' => date('Y-m-d'),
                 'created_by' => auth()->id(),
+                'status' => 'Pending Approval',
             ]);
 
             foreach ($request->items as $item) {
@@ -70,23 +71,56 @@ class StockOpnameController extends Controller
                     'catatan' => $item['catatan'] ?? null,
                 ]);
 
-                // Update batch stock
-                $batch->stok_sisa_batch = $qtyFisik;
-                $batch->save();
+                // We DO NOT update batch stock and rack capacity here.
+                // It will only be updated after approval.
+            }
 
-                // Update rack used capacity based on difference (selisih)
-                $rack = Rack::where('kode_rak', $batch->rak_id)->first();
-                if ($rack) {
-                    $rack->kapasitas_terpakai = max(0, $rack->kapasitas_terpakai + $selisih);
-                    $rack->save();
+            DB::commit();
+            return redirect()->route('opname.index')->with('success', 'Stock Opname berhasil diajukan dan menunggu persetujuan Owner / Admin Gudang.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    // Sahkan/Approve Stock Opname (Owner or Admin Gudang)
+    public function approve($id)
+    {
+        abort_if(!in_array(auth()->user()->role, ['owner', 'admin_gudang']), 403, 'Akses Ditolak: Hanya Owner atau Admin Gudang yang dapat mensahkan hasil audit.');
+
+        $opname = StockOpname::with('details')->findOrFail($id);
+        if ($opname->status !== 'Pending Approval') {
+            return redirect()->back()->with('error', 'Gagal: Hasil opname ini sudah diproses atau disahkan sebelumnya.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $opname->status = 'Approved';
+            $opname->approved_by = auth()->id();
+            $opname->approved_at = now();
+            $opname->save();
+
+            foreach ($opname->details as $detail) {
+                $batch = BatchInbound::where('batch_number', $detail->batch_number)->first();
+                if ($batch) {
+                    // Update batch stock
+                    $batch->stok_sisa_batch = $detail->qty_fisik;
+                    $batch->save();
+
+                    // Update rack used capacity based on difference (selisih)
+                    $rack = Rack::where('kode_rak', $batch->rak_id)->first();
+                    if ($rack) {
+                        $rack->kapasitas_terpakai = max(0, $rack->kapasitas_terpakai + $detail->selisih);
+                        $rack->save();
+                    }
                 }
             }
 
             DB::commit();
-            return redirect()->route('opname.index')->with('success', 'Stock Opname berhasil disimpan dan stok sistem telah direkonsiliasi.');
+            return redirect()->route('opname.show', $opname->id)->with('success', 'Hasil audit Stock Opname berhasil disahkan. Stok sistem dan kapasitas rak telah disesuaikan.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat mensahkan hasil opname: ' . $e->getMessage());
         }
     }
 }

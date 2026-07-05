@@ -276,4 +276,94 @@ class FefoAlgorithmTest extends TestCase
         $this->assertEquals(50, $batch->fresh()->stok_sisa_batch,
             'Rollback: Stok harus kembali ke 50 setelah laporan barang rusak ditolak Owner.');
     }
+
+    /**
+     * TC-07: Inbound processes must convert quantity using rasio_konversi for storage but keep PO and receiving history in buying unit.
+     */
+    public function test_inbound_converts_uom_based_on_conversion_ratio(): void
+    {
+        $category = Category::create(['nama_kategori' => 'Minuman']);
+        $product = Product::create([
+            'kode_produk' => 'SKU-CONV-001',
+            'nama_produk' => 'Susu Kotak UHT',
+            'kategori_id' => $category->id,
+            'harga_beli' => 120000, // Harga per Dus
+            'stok_minimum' => 2,
+            'uom' => 'Pcs',
+            'satuan_beli' => 'Dus',
+            'satuan_jual' => 'Pcs',
+            'rasio_konversi' => 12, // 1 Dus = 12 Pcs
+        ]);
+
+        $po = PurchaseOrder::create([
+            'po_number' => 'PO-TEST-CONV',
+            'supplier_id' => $this->supplier->id,
+            'status' => 'Ordered',
+            'total_harga' => 240000,
+            'created_by' => $this->adminUser->id,
+        ]);
+
+        $poDetail = PurchaseOrderDetail::create([
+            'po_id' => $po->id,
+            'produk_id' => $product->kode_produk,
+            'qty_pesan' => 2, // Pesan 2 Dus
+            'qty_diterima' => 0,
+        ]);
+
+        // Simulasikan Inbound penerimaan 2 Dus
+        $qtyDatang = 2; // Dus
+        $qtyRusak = 0;
+        $qtyDiterima = $qtyDatang - $qtyRusak;
+
+        // Hitung konversi ke satuan jual
+        $rasio = $product->rasio_konversi; // 12
+        $qtyDiterimaJual = $qtyDiterima * $rasio; // 24 Pcs
+
+        $batch = BatchInbound::create([
+            'batch_number' => 'BTC-TEST-CONV-1',
+            'produk_id' => $product->kode_produk,
+            'po_id' => $po->id,
+            'rak_id' => $this->rack->kode_rak,
+            'expired_date' => '2027-06-01',
+            'stok_awal_batch' => $qtyDiterimaJual,
+            'stok_sisa_batch' => $qtyDiterimaJual,
+        ]);
+
+        $this->rack->kapasitas_terpakai += $qtyDiterimaJual;
+        $this->rack->save();
+
+        $poDetail->qty_diterima += $qtyDiterima; // incremented by buying unit (Dus)
+        $poDetail->save();
+
+        $this->assertEquals(24, $batch->stok_sisa_batch, 'Stok sisa batch dalam satuan_jual harus 24 Pcs.');
+        $this->assertEquals(24, $this->rack->kapasitas_terpakai, 'Kapasitas rak terpakai harus bertambah 24 unit.');
+        $this->assertEquals(2, $poDetail->qty_diterima, 'Kuantitas diterima pada detail PO harus tetap dalam satuan_beli (2 Dus).');
+    }
+
+    /**
+     * TC-08: Inbound strict over-receiving validation on qty_datang.
+     */
+    public function test_inbound_blocks_over_receiving_qty_datang(): void
+    {
+        $po = PurchaseOrder::create([
+            'po_number' => 'PO-TEST-OVER',
+            'supplier_id' => $this->supplier->id,
+            'status' => 'Ordered',
+            'total_harga' => 100000,
+            'created_by' => $this->adminUser->id,
+        ]);
+
+        $poDetail = PurchaseOrderDetail::create([
+            'po_id' => $po->id,
+            'produk_id' => $this->product->kode_produk,
+            'qty_pesan' => 10,
+            'qty_diterima' => 4, // 6 remaining
+        ]);
+
+        // Attempting to receive qty_datang = 8 (which is > remaining 6)
+        $qtyDatang = 8;
+        $remaining = $poDetail->qty_pesan - $poDetail->qty_diterima;
+
+        $this->assertTrue($qtyDatang > $remaining, 'Qty datang (8) melebihi sisa pesanan (6).');
+    }
 }

@@ -5,7 +5,15 @@
         <td>{{ $product->category->nama_kategori }}</td>
         <td>Rp {{ number_format((double)$product->harga_beli, 0, ',', '.') }}</td>
         <td>{{ $product->stok_minimum }}</td>
-        <td><span class="badge badge-blue">{{ $product->uom }}</span></td>
+        <td>
+            @if(($product->satuan_beli ?? '') !== '')
+                <span class="badge badge-blue" style="font-size:0.78rem;">
+                    {{ $product->satuan_beli }} / {{ $product->satuan_jual }} (1:{{ $product->rasio_konversi }})
+                </span>
+            @else
+                <span class="badge badge-blue">{{ $product->uom }}</span>
+            @endif
+        </td>
         <td>
             <strong style="color: var({{ $product->stock_status === 'Kritis' ? '--accent-red' : ($product->stock_status === 'Menipis' ? '--accent-yellow' : '--accent-green') }});">{{ $product->total_stok }}</strong>
         </td>

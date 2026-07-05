@@ -4,9 +4,11 @@
             <h1>Riwayat Barang Masuk (Inbound)</h1>
             <p>Seluruh histori penerimaan batch produk dari supplier berbasis validasi Purchase Order.</p>
         </div>
+        @if(auth()->user()->role !== 'admin_gudang')
         <a href="{{ route('inbound.create') }}" class="btn btn-primary">
             + Proses Barang Masuk Baru
         </a>
+        @endif
     </div>
 
     {{-- Live Search --}}

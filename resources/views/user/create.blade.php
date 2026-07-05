@@ -7,7 +7,7 @@
         <p>Buat akun operator baru dengan pembagian wewenang hak akses (RBAC) spesifik.</p>
     </div>
 
-    <div class="glass-card" style="max-width: 500px;">
+    <div class="glass-card">
         <form action="{{ route('user.store') }}" method="POST">
             @csrf
             
@@ -27,7 +27,9 @@
                     <option value="" disabled selected>Pilih Role</option>
                     <option value="staff_gudang" {{ old('role') == 'staff_gudang' ? 'selected' : '' }}>Staff Gudang (Operasional Lapangan)</option>
                     <option value="admin_gudang" {{ old('role') == 'admin_gudang' ? 'selected' : '' }}>Admin Gudang (Administrasi Data)</option>
-                    <option value="owner" {{ old('role') == 'owner' ? 'selected' : '' }}>Owner (Manajerial & Pengambil Keputusan)</option>
+                    @if(auth()->user()->role !== 'admin_gudang')
+                        <option value="owner" {{ old('role') == 'owner' ? 'selected' : '' }}>Owner (Manajerial & Pengambil Keputusan)</option>
+                    @endif
                 </select>
             </div>
 

@@ -7,7 +7,7 @@
         <p>Perbarui profil nama, email, dan level otorisasi akses operator.</p>
     </div>
 
-    <div class="glass-card" style="max-width: 500px;">
+    <div class="glass-card">
         <form action="{{ route('user.update', $user->id) }}" method="POST">
             @csrf
             @method('PUT')
@@ -27,7 +27,9 @@
                 <select name="role" id="role" class="form-control" required>
                     <option value="staff_gudang" {{ old('role', $user->role) == 'staff_gudang' ? 'selected' : '' }}>Staff Gudang (Operasional Lapangan)</option>
                     <option value="admin_gudang" {{ old('role', $user->role) == 'admin_gudang' ? 'selected' : '' }}>Admin Gudang (Administrasi Data)</option>
-                    <option value="owner" {{ old('role', $user->role) == 'owner' ? 'selected' : '' }}>Owner (Manajerial & Pengambil Keputusan)</option>
+                    @if(auth()->user()->role !== 'admin_gudang')
+                        <option value="owner" {{ old('role', $user->role) == 'owner' ? 'selected' : '' }}>Owner (Manajerial & Pengambil Keputusan)</option>
+                    @endif
                 </select>
             </div>
 

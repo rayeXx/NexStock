@@ -153,11 +153,13 @@
                     <p style="font-size:0.78rem; color:#64748b; margin:0;">Total unit barang yang dikeluarkan dari gudang per periode.</p>
                 </div>
                 {{-- Filter Buttons --}}
-                <div id="chartFilterGroup" style="display:flex; gap:0.4rem; background:rgba(0,0,0,0.2); padding:0.3rem; border-radius:0.6rem; border:1px solid rgba(255,255,255,0.06);">
+                <div id="chartFilterGroup" style="display:flex; gap:0.4rem; background:rgba(0,0,0,0.2); padding:0.3rem; border-radius:0.6rem; border:1px solid rgba(255,255,255,0.06); flex-wrap:wrap;">
                     <button type="button" onclick="switchPeriod('today', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">Hari Ini</button>
-                    <button type="button" onclick="switchPeriod('week', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">7 Hari</button>
-                    <button type="button" onclick="switchPeriod('thirty', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">30 Hari</button>
-                    <button type="button" onclick="switchPeriod('month', this)" id="defaultFilterBtn" class="chart-filter-btn chart-filter-active" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:rgba(56,189,248,0.15); color:#38bdf8;">Bulan Ini</button>
+                    <button type="button" onclick="switchPeriod('week', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">1 Minggu</button>
+                    <button type="button" onclick="switchPeriod('thirty', this)" id="defaultFilterBtn" class="chart-filter-btn chart-filter-active" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">1 Bulan</button>
+                    <button type="button" onclick="switchPeriod('three_months', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">3 Bulan</button>
+                    <button type="button" onclick="switchPeriod('six_months', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">6 Bulan</button>
+                    <button type="button" onclick="switchPeriod('year', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">1 Tahun</button>
                 </div>
             </div>
 
@@ -336,7 +338,9 @@
                 today:  { labels: {!! json_encode($chartTodayLabels) !!},  data: {!! json_encode($chartTodayData) !!} },
                 week:   { labels: {!! json_encode($chartWeekLabels) !!},   data: {!! json_encode($chartWeekData) !!} },
                 thirty: { labels: {!! json_encode($chartThirtyLabels) !!}, data: {!! json_encode($chartThirtyData) !!} },
-                month:  { labels: {!! json_encode($chartMonthLabels) !!},  data: {!! json_encode($chartMonthData) !!} },
+                three_months: { labels: {!! json_encode($chartThreeMonthsLabels) !!}, data: {!! json_encode($chartThreeMonthsData) !!} },
+                six_months:   { labels: {!! json_encode($chartSixMonthsLabels) !!},   data: {!! json_encode($chartSixMonthsData) !!} },
+                year:         { labels: {!! json_encode($chartYearLabels) !!},        data: {!! json_encode($chartYearData) !!} },
             };
 
             function makeGradient(colorStart, colorEnd) {
@@ -355,7 +359,7 @@
                 document.getElementById('statPeak').textContent  = peak.toLocaleString('id-ID');
             }
 
-            const initData = chartDataSets.month;
+            const initData = chartDataSets.thirty;
 
             let salesChart = new Chart(ctx, {
                 type: 'bar',
@@ -420,13 +424,11 @@
             updateStats(initData.data);
 
             window.switchPeriod = function(period, btn) {
-                // Update active button styling
+                // Update active button styling by toggling the class
                 document.querySelectorAll('.chart-filter-btn').forEach(b => {
-                    b.style.background = 'transparent';
-                    b.style.color = '#64748b';
+                    b.classList.remove('chart-filter-active');
                 });
-                btn.style.background = 'rgba(56,189,248,0.15)';
-                btn.style.color = '#38bdf8';
+                btn.classList.add('chart-filter-active');
 
                 const dataset = chartDataSets[period];
                 salesChart.data.labels = dataset.labels;

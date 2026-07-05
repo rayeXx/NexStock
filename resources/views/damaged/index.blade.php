@@ -2,11 +2,13 @@
     <div class="flex-between" style="margin-bottom: 2rem;">
         <div>
             <h1>Laporan Karantina Barang Rusak</h1>
-            <p>Histori produk cacat yang diisolasi dari stok siap jual dan menunggu tindak lanjut Owner.</p>
+            <p>Histori produk cacat yang diisolasi dari stok siap jual dan menunggu tindak lanjut Admin.</p>
         </div>
+        @if(auth()->user()->role === 'staff_gudang')
         <a href="{{ route('damaged.create') }}" class="btn btn-danger">
             + Laporkan Barang Rusak
         </a>
+        @endif
     </div>
 
     <div class="glass-card">
@@ -23,7 +25,9 @@
                         <th>Dilaporkan Oleh</th>
                         <th>Status</th>
                         <th>Foto Bukti</th>
-
+                        @if(auth()->user()->role === 'admin_gudang')
+                            <th>Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -42,7 +46,7 @@
                                 @elseif($report->status === 'Approved')
                                     <span class="badge badge-green">Terkarantina (Disetujui)</span>
                                 @else
-                                    <span class="badge badge-blue">Ditolak (Stok Dikembalikan)</span>
+                                    <span class="badge badge-red">Ditolak (Stok Dikembalikan)</span>
                                 @endif
                             </td>
                             <td>
@@ -54,7 +58,28 @@
                                     <span style="color: var(--text-muted);">Tidak ada</span>
                                 @endif
                             </td>
-
+                            @if(auth()->user()->role === 'admin_gudang')
+                                <td>
+                                    @if($report->status === 'Pending')
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <form action="{{ route('damaged.approve', $report->id) }}" method="POST" onsubmit="return confirm('Setujui laporan barang rusak ini?');" style="margin: 0;">
+                                                @csrf
+                                                <button type="submit" class="btn btn-success" style="padding: 5px 10px; min-height: 36px; font-size: 0.75rem;">
+                                                    Setujui
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('damaged.reject', $report->id) }}" method="POST" onsubmit="return confirm('Tolak laporan barang rusak ini dan kembalikan stok?');" style="margin: 0;">
+                                                @csrf
+                                                <button type="submit" class="btn btn-danger" style="padding: 5px 10px; min-height: 36px; font-size: 0.75rem;">
+                                                    Tolak
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @else
+                                        <span style="color: var(--text-muted); font-size: 0.85rem;">Selesai</span>
+                                    @endif
+                                </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>

@@ -54,7 +54,9 @@ class ProductController extends Controller
             'nama_produk' => 'required|string|max:255',
             'harga_beli' => 'required|numeric|min:0',
             'stok_minimum' => 'required|integer|min:0',
-            'uom' => 'required|in:Pcs,Dus,Pack',
+            'satuan_beli' => 'required|string|max:50',
+            'satuan_jual' => 'required|string|max:50',
+            'rasio_konversi' => 'required|integer|min:1',
         ];
 
         if ($request->input('kategori_id') === 'lainnya') {
@@ -82,7 +84,10 @@ class ProductController extends Controller
             'kategori_id' => $kategoriId,
             'harga_beli' => $request->input('harga_beli'),
             'stok_minimum' => $request->input('stok_minimum'),
-            'uom' => $request->input('uom'),
+            'uom' => $request->input('satuan_jual'),
+            'satuan_beli' => $request->input('satuan_beli'),
+            'satuan_jual' => $request->input('satuan_jual'),
+            'rasio_konversi' => $request->input('rasio_konversi'),
         ]);
 
         return redirect()->route('product.index')->with('success', 'Produk berhasil ditambahkan.');
@@ -105,7 +110,9 @@ class ProductController extends Controller
             'nama_produk' => 'required|string|max:255',
             'harga_beli' => 'required|numeric|min:0',
             'stok_minimum' => 'required|integer|min:0',
-            'uom' => 'required|in:Pcs,Dus,Pack',
+            'satuan_beli' => 'required|string|max:50',
+            'satuan_jual' => 'required|string|max:50',
+            'rasio_konversi' => 'required|integer|min:1',
         ];
 
         if ($request->input('kategori_id') === 'lainnya') {
@@ -132,7 +139,10 @@ class ProductController extends Controller
             'kategori_id' => $kategoriId,
             'harga_beli' => $request->input('harga_beli'),
             'stok_minimum' => $request->input('stok_minimum'),
-            'uom' => $request->input('uom'),
+            'uom' => $request->input('satuan_jual'),
+            'satuan_beli' => $request->input('satuan_beli'),
+            'satuan_jual' => $request->input('satuan_jual'),
+            'rasio_konversi' => $request->input('rasio_konversi'),
         ]);
 
         return redirect()->route('product.index')->with('success', 'Produk berhasil diperbarui.');

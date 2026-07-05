@@ -41,7 +41,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('outbound')->name('outbound.')->group(function () {
         Route::get('/', [OutboundController::class, 'index'])->name('index');
         Route::get('/create', [OutboundController::class, 'create'])->name('create');
-        Route::post('/store', [OutboundController::class, 'store'])->name('store');
+        // Step 1: FEFO in-memory preview → generates picking slip in session
+        Route::post('/preview', [OutboundController::class, 'preview'])->name('preview');
+        // Step 2a: Show picking slip + batch scan inputs
+        Route::get('/confirm', [OutboundController::class, 'showConfirm'])->name('confirm.show');
+        // Step 2b: Validate batch scans then commit to DB
+        Route::post('/confirm', [OutboundController::class, 'confirm'])->name('confirm');
     });
 
     Route::prefix('damaged')->name('damaged.')->group(function () {
@@ -54,6 +59,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [StockOpnameController::class, 'index'])->name('index');
         Route::get('/create', [StockOpnameController::class, 'create'])->name('create');
         Route::post('/store', [StockOpnameController::class, 'store'])->name('store');
+        Route::post('/{id}/approve', [StockOpnameController::class, 'approve'])->name('approve');
         Route::get('/{id}', [StockOpnameController::class, 'show'])->name('show');
     });
 
@@ -68,6 +74,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:admin_gudang,owner'])->group(function () {
         Route::resource('product', ProductController::class)->except(['show']);
         Route::resource('supplier', SupplierController::class)->except(['show']);
+        // Supplier KPI Detail Page
+        Route::get('/supplier/{id}', [SupplierController::class, 'show'])->name('supplier.show');
         Route::resource('rack', RackController::class)->except(['show']);
 
         // Procurement PO (View)
@@ -87,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/store', [PurchaseOrderController::class, 'store'])->name('store');
             Route::post('/{id}/order', [PurchaseOrderController::class, 'order'])->name('order');
             Route::post('/{id}/history/{historyId}/retur', [InboundController::class, 'updateRetur'])->name('update-retur');
+            Route::post('/{id}/history/{historyId}/mark-as-returned', [PurchaseOrderController::class, 'markAsReturned'])->name('mark-as-returned');
             Route::delete('/{id}', [PurchaseOrderController::class, 'destroy'])->name('destroy');
         });
 
@@ -94,6 +103,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/restock-request/review', [RestockRequestController::class, 'reviewIndex'])->name('restock-request.review');
         Route::post('/restock-request/{id}/approve', [RestockRequestController::class, 'approve'])->name('restock-request.approve');
         Route::post('/restock-request/{id}/reject', [RestockRequestController::class, 'reject'])->name('restock-request.reject');
+
+        // Damaged Report Approvals (Admin Gudang)
+        Route::post('/damaged/{id}/approve', [DamagedReportController::class, 'approve'])->name('damaged.approve');
+        Route::post('/damaged/{id}/reject', [DamagedReportController::class, 'reject'])->name('damaged.reject');
+    });
+
+    // 4. Approvals (Owner only)
+    Route::middleware(['role:owner'])->group(function () {
+        Route::post('/po/{id}/approve', [PurchaseOrderController::class, 'approve'])->name('po.approve');
+        Route::post('/po/{id}/reject', [PurchaseOrderController::class, 'reject'])->name('po.reject');
     });
 });
 

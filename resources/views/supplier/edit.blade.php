@@ -7,7 +7,7 @@
         <p>Perbarui informasi detail kontak dari mitra pemasok.</p>
     </div>
 
-    <div class="glass-card" style="max-width: 500px;">
+    <div class="glass-card">
         <form action="{{ route('supplier.update', $supplier->id) }}" method="POST">
             @csrf
             @method('PUT')

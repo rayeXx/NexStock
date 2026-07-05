@@ -7,7 +7,7 @@
         <p>Hubungkan mitra pemasok baru ke dalam database logistik pengadaan.</p>
     </div>
 
-    <div class="glass-card" style="max-width: 500px;">
+    <div class="glass-card">
         <form action="{{ route('supplier.store') }}" method="POST">
             @csrf
             

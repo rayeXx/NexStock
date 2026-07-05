@@ -14,6 +14,7 @@ class PurchaseOrderDetail extends Model
         'produk_id',
         'qty_pesan',
         'qty_diterima',
+        'harga_satuan',
     ];
 
     public function purchaseOrder(): BelongsTo

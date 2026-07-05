@@ -8,16 +8,17 @@
     </div>
 
     <div class="instruction-box" style="max-width: 800px;">
-        <h4>Prinsip FEFO: First Expired, First Out (FR-02)</h4>
+        <h4>Prinsip FEFO: First Expired, First Out (FR-02) — Anti-Blind Picking</h4>
         <ol>
             <li>Masukkan tujuan pengiriman dan daftar produk yang ingin dikeluarkan.</li>
-            <li>Sistem akan memilih batch dengan expired date terdekat secara otomatis.</li>
-            <li>Setelah validasi sukses, sistem akan menampilkan instruksi lokasi rak pengambilan fisik.</li>
+            <li>Klik <strong>"Preview Picking Slip"</strong> — sistem akan menentukan batch mana yang harus diambil berdasarkan FEFO.</li>
+            <li>Lihat instruksi picking slip, lalu <strong>ambil barang fisik dari rak sesuai batch yang ditunjuk</strong>.</li>
+            <li>Input/scan nomor batch dari fisik barang sebagai konfirmasi. Sistem memvalidasi kecocokan sebelum stok dipotong.</li>
         </ol>
     </div>
 
     <div class="glass-card" style="max-width: 800px;">
-        <form method="POST" action="{{ route('outbound.store') }}" id="outboundForm">
+        <form method="POST" action="{{ route('outbound.preview') }}" id="outboundForm">
             @csrf
 
             <div class="form-group">
@@ -61,7 +62,7 @@
 
             <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
                 <button type="submit" class="btn btn-success" style="flex: 1;">
-                    ✓ Validasi Stok & Proses Barang Keluar (FEFO)
+                    🔍 Preview Picking Slip FEFO
                 </button>
                 <a href="{{ route('outbound.index') }}" class="btn btn-secondary" style="flex: 1;">
                     Batal

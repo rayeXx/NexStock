@@ -58,6 +58,8 @@ class InboundController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(auth()->user()->role === 'admin_gudang', 403, 'Akses Ditolak: Admin tidak diizinkan memproses penerimaan barang.');
+
         $po = PurchaseOrder::with('details.product')->findOrFail($request->po_id);
 
         if (!in_array($po->status, ['Ordered', 'Partially Received'])) {
@@ -75,6 +77,25 @@ class InboundController extends Controller
             'items.*.expired_date' => 'nullable|date',
             'items.*.rak_id' => 'nullable|exists:m_racks,kode_rak',
         ]);
+
+        // Validasi Kelebihan Pengiriman / Over-receiving (Money Mastery)
+        foreach ($request->items as $item) {
+            $qtyDatang = (int)($item['qty_datang'] ?? 0);
+            if ($qtyDatang <= 0) continue;
+
+            $poDetail = PurchaseOrderDetail::where('po_id', $po->id)
+                ->where('produk_id', $item['produk_id'])
+                ->first();
+
+            if (!$poDetail) {
+                return redirect()->back()->withInput()->with('error', 'Item ' . $item['produk_id'] . ' tidak ditemukan pada PO ini.');
+            }
+
+            $remaining = $poDetail->qty_pesan - $poDetail->qty_diterima;
+            if ($qtyDatang > $remaining) {
+                return redirect()->back()->withInput()->with('error', 'Jumlah barang datang tidak boleh melebihi sisa pesanan PO.');
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -120,23 +141,17 @@ class InboundController extends Controller
                     ->where('produk_id', $item['produk_id'])
                     ->first();
 
-                if (!$poDetail) {
-                    throw new \Exception('Item ' . $item['produk_id'] . ' tidak ditemukan pada PO ini.');
-                }
-
-                // Remaining validation
-                $remaining = $poDetail->qty_pesan - $poDetail->qty_diterima;
-                if ($qtyDiterima > $remaining) {
-                    throw new \Exception('Qty Diterima (Baik) untuk produk ' . $item['produk_id'] . ' (' . $qtyDiterima . ') melebihi sisa pesanan (' . $remaining . ').');
-                }
-
                 $batchInternal = null;
 
                 // Process Inbound for good items
                 if ($qtyDiterima > 0) {
+                    $product = $poDetail->product;
+                    $rasio = $product->rasio_konversi ?? 1;
+                    $qtyDiterimaJual = $qtyDiterima * $rasio;
+
                     $rack = Rack::where('kode_rak', $item['rak_id'])->first();
-                    if (($rack->kapasitas_maksimum_volume - $rack->kapasitas_terpakai) < $qtyDiterima) {
-                        throw new \Exception('Kapasitas Rak ' . $rack->nama_rak . ' tidak mencukupi untuk ' . $qtyDiterima . ' unit.');
+                    if (($rack->kapasitas_maksimum_volume - $rack->kapasitas_terpakai) < $qtyDiterimaJual) {
+                        throw new \Exception('Kapasitas Rak ' . $rack->nama_rak . ' tidak mencukupi untuk ' . $qtyDiterimaJual . ' unit.');
                     }
 
                     $batchInternal = 'BTC-PO' . $po->id . '-' . $item['produk_id'] . '-' . time();
@@ -148,11 +163,11 @@ class InboundController extends Controller
                         'po_id' => $po->id,
                         'rak_id' => $rack->kode_rak,
                         'expired_date' => $item['expired_date'],
-                        'stok_awal_batch' => $qtyDiterima,
-                        'stok_sisa_batch' => $qtyDiterima,
+                        'stok_awal_batch' => $qtyDiterimaJual,
+                        'stok_sisa_batch' => $qtyDiterimaJual,
                     ]);
 
-                    $rack->kapasitas_terpakai += $qtyDiterima;
+                    $rack->kapasitas_terpakai += $qtyDiterimaJual;
                     $rack->save();
 
                     $poDetail->qty_diterima += $qtyDiterima;
@@ -226,6 +241,8 @@ class InboundController extends Controller
 
     public function updateRetur(Request $request, $id, $historyId)
     {
+        abort_if(auth()->user()->role === 'admin_gudang', 403, 'Akses Ditolak: Admin tidak diizinkan memproses retur.');
+
         $po = PurchaseOrder::findOrFail($id);
         $history = PoReceivingHistory::where('po_id', $po->id)->findOrFail($historyId);
 

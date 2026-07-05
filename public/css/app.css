@@ -45,7 +45,7 @@ body {
 .main-content {
     flex: 1;
     width: 100%;
-    max-width: 1400px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 1.5rem;
 }
@@ -900,5 +900,91 @@ select.form-control::-ms-expand {
     from { transform: scale(0.9); }
     to { transform: scale(1); }
 }
+
+/* Premium Visual Enhancements */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.glass-card {
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered load delays for cards on page */
+.glass-card:nth-child(1) { animation-delay: 0.05s; }
+.glass-card:nth-child(2) { animation-delay: 0.12s; }
+.glass-card:nth-child(3) { animation-delay: 0.18s; }
+.glass-card:nth-child(4) { animation-delay: 0.24s; }
+
+.sidebar {
+    animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.glass-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.25) !important;
+    box-shadow: 
+        0 12px 40px 0 rgba(0, 0, 0, 0.3),
+        0 0 20px 0 rgba(56, 189, 248, 0.05) !important;
+}
+
+.btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.table-premium tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-premium tr:hover td {
+    background: rgba(56, 189, 248, 0.03) !important;
+}
+
+.form-control {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.form-control:focus {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+}
+
+.sidebar-nav-link {
+    transition: all 0.25s ease !important;
+}
+
+.sidebar-nav-link:hover {
+    padding-left: 1.25rem !important;
+}
+
+.sidebar-nav-link.active:hover {
+    padding-left: calc(1rem - 3px) !important; /* Keep active stable */
+}
+
 
 

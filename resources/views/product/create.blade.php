@@ -58,25 +58,42 @@
 
             <div class="grid-2">
                 <div class="form-group">
-                    <label class="form-label" for="harga_beli">Harga Beli Satuan (Rp) *</label>
+                    <label class="form-label" for="harga_beli">Harga Beli (Rp) *</label>
                     <input type="number" name="harga_beli" id="harga_beli" class="form-control" min="0" placeholder="Contoh: 7500" value="{{ old('harga_beli') }}" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="uom">Satuan Kemasan (UOM) *</label>
-                    <select name="uom" id="uom" class="form-control" required>
-                        <option value="Pcs" {{ old('uom') == 'Pcs' ? 'selected' : '' }}>Pcs</option>
-                        <option value="Dus" {{ old('uom') == 'Dus' ? 'selected' : '' }}>Dus</option>
-                        <option value="Pack" {{ old('uom') == 'Pack' ? 'selected' : '' }}>Pack</option>
-                    </select>
+                    <label class="form-label" for="stok_minimum">Batas Minimum Stok *</label>
+                    <input type="number" name="stok_minimum" id="stok_minimum" class="form-control" min="0" placeholder="Contoh: 20" value="{{ old('stok_minimum', 10) }}" required>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label" for="stok_minimum">Batas Minimum Stok *</label>
-                <input type="number" name="stok_minimum" id="stok_minimum" class="form-control" min="0" placeholder="Contoh: 20" value="{{ old('stok_minimum', 10) }}" required>
-                <p style="font-size: 0.75rem; margin-top: 0.25rem;">Sistem akan memicu peringatan restock jika stok berada di bawah batas ini.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                <div class="form-group">
+                    <label class="form-label" for="satuan_beli">Satuan Beli *</label>
+                    <select name="satuan_beli" id="satuan_beli" class="form-control" required>
+                        <option value="Dus" {{ old('satuan_beli', 'Dus') == 'Dus' ? 'selected' : '' }}>Dus</option>
+                        <option value="Pack" {{ old('satuan_beli') == 'Pack' ? 'selected' : '' }}>Pack</option>
+                        <option value="Pcs" {{ old('satuan_beli') == 'Pcs' ? 'selected' : '' }}>Pcs</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="satuan_jual">Satuan Jual *</label>
+                    <select name="satuan_jual" id="satuan_jual" class="form-control" required>
+                        <option value="Pcs" {{ old('satuan_jual', 'Pcs') == 'Pcs' ? 'selected' : '' }}>Pcs</option>
+                        <option value="Pack" {{ old('satuan_jual') == 'Pack' ? 'selected' : '' }}>Pack</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="rasio_konversi">Rasio Konversi *</label>
+                    <input type="number" name="rasio_konversi" id="rasio_konversi" class="form-control" min="1" placeholder="Contoh: 12" value="{{ old('rasio_konversi', 1) }}" required>
+                </div>
             </div>
+            <p style="font-size: 0.75rem; margin-top: -0.75rem; margin-bottom: 1.5rem; color: var(--text-muted);">
+                Rasio Konversi adalah jumlah Satuan Jual di dalam 1 Satuan Beli (contoh: jika beli dalam Dus berisi 12 Pcs, isi 12).
+            </p>
 
             <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                 <button type="submit" class="btn btn-primary" style="flex: 1;">

@@ -20,11 +20,15 @@ class Product extends Model
         'harga_beli',
         'stok_minimum',
         'uom',
+        'satuan_beli',
+        'satuan_jual',
+        'rasio_konversi',
     ];
 
     protected $casts = [
         'harga_beli' => 'encrypted', // AES-256 encryption
         'stok_minimum' => 'integer',
+        'rasio_konversi' => 'integer',
     ];
 
     public function category(): BelongsTo

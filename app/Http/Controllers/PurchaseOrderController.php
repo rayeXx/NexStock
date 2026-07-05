@@ -41,39 +41,48 @@ class PurchaseOrderController extends Controller
         return view('po.create', compact('suppliers', 'products'));
     }
 
-    // Store draft PO
+    // Store draft PO (dengan harga_satuan per-item dan target_tanggal_kirim)
     public function store(Request $request)
     {
         $request->validate([
-            'supplier_id' => 'required|exists:m_suppliers,id',
-            'items' => 'required|array',
-            'items.*.produk_id' => 'required|exists:m_products,kode_produk',
-            'items.*.qty_pesan' => 'required|integer|min:1',
+            'supplier_id'              => 'required|exists:m_suppliers,id',
+            'target_tanggal_kirim'     => 'nullable|date|after_or_equal:today',
+            'items'                    => 'required|array',
+            'items.*.produk_id'        => 'required|exists:m_products,kode_produk',
+            'items.*.qty_pesan'        => 'required|integer|min:1',
+            'items.*.harga_satuan'     => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
             $poNumber = 'PO-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(2)));
             $po = PurchaseOrder::create([
-                'po_number' => $poNumber,
-                'supplier_id' => $request->supplier_id,
-                'status' => 'Draft',
-                'total_harga' => 0, // calculated from items
-                'created_by' => auth()->id(),
+                'po_number'            => $poNumber,
+                'supplier_id'          => $request->supplier_id,
+                'status'               => 'Draft',
+                'total_harga'          => 0, // will be updated below
+                'target_tanggal_kirim' => $request->target_tanggal_kirim ?: null,
+                'created_by'           => auth()->id(),
             ]);
 
             $totalHarga = 0;
             foreach ($request->items as $item) {
                 $product = Product::findOrFail($item['produk_id']);
-                $qty = (int)$item['qty_pesan'];
-                $hargaBeli = (double)$product->harga_beli;
-                $subtotal = $qty * $hargaBeli;
+                $qty = (int) $item['qty_pesan'];
+
+                // Use custom harga_satuan from form if provided; fallback to product master price
+                $hargaSatuan = isset($item['harga_satuan']) && $item['harga_satuan'] !== ''
+                    ? (float) $item['harga_satuan']
+                    : (float) $product->harga_beli;
+
+                $subtotal = $qty * $hargaSatuan;
 
                 PurchaseOrderDetail::create([
-                    'po_id' => $po->id,
-                    'produk_id' => $product->kode_produk,
-                    'qty_pesan' => $qty,
+                    'po_id'        => $po->id,
+                    'produk_id'    => $product->kode_produk,
+                    'qty_pesan'    => $qty,
                     'qty_diterima' => 0,
+                    'harga_satuan' => $hargaSatuan,
                 ]);
 
                 $totalHarga += $subtotal;
@@ -114,5 +123,24 @@ class PurchaseOrderController extends Controller
 
         $po->delete();
         return redirect()->route('po.index')->with('success', 'Draf PO berhasil dihapus.');
+    }
+
+    // Confirm shipping return of damaged items (Admin Gudang only)
+    public function markAsReturned($id, $historyId)
+    {
+        abort_if(auth()->user()->role !== 'admin_gudang', 403, 'Akses Ditolak: Hanya Admin Gudang yang dapat memproses pengiriman retur.');
+
+        $po = PurchaseOrder::findOrFail($id);
+        $history = PoReceivingHistory::where('po_id', $po->id)->findOrFail($historyId);
+
+        if ($history->status_retur !== 'Menunggu Retur') {
+            return redirect()->back()->with('error', 'Gagal: Status retur haruslah Menunggu Retur.');
+        }
+
+        $history->status_retur = 'Sudah Diretur';
+        $history->tanggal_retur = Carbon::now();
+        $history->save();
+
+        return redirect()->route('po.show', $po->id)->with('success', 'Status retur berhasil diperbarui menjadi Sudah Diretur.');
     }
 }

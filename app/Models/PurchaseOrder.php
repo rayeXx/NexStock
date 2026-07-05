@@ -15,7 +15,12 @@ class PurchaseOrder extends Model
         'supplier_id',
         'status',
         'total_harga',
+        'target_tanggal_kirim',
         'created_by',
+    ];
+
+    protected $casts = [
+        'target_tanggal_kirim' => 'date',
     ];
 
     public function supplier(): BelongsTo

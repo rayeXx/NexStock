@@ -28,6 +28,10 @@ class UserController extends Controller
             'role' => 'required|in:staff_gudang,admin_gudang,owner',
         ]);
 
+        if (auth()->user()->role === 'admin_gudang' && $request->role === 'owner') {
+            abort(403, 'Akses Ditolak: Admin tidak diizinkan membuat user dengan role Owner.');
+        }
+
         User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -41,12 +45,23 @@ class UserController extends Controller
     public function edit($id)
     {
         $user = User::findOrFail($id);
+
+        if (auth()->user()->role === 'admin_gudang' && $user->role === 'owner') {
+            abort(403, 'Akses Ditolak: Admin tidak diizinkan memodifikasi user dengan role Owner.');
+        }
+
         return view('user.edit', compact('user'));
     }
 
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
+
+        if (auth()->user()->role === 'admin_gudang') {
+            if ($user->role === 'owner' || $request->role === 'owner') {
+                abort(403, 'Akses Ditolak: Admin tidak diizinkan memodifikasi user dengan role Owner.');
+            }
+        }
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -75,6 +90,11 @@ class UserController extends Controller
     public function destroy($id)
     {
         $user = User::findOrFail($id);
+
+        if (auth()->user()->role === 'admin_gudang' && $user->role === 'owner') {
+            abort(403, 'Akses Ditolak: Admin tidak diizinkan menghapus user dengan role Owner.');
+        }
+
         if ($user->id === auth()->id()) {
             return redirect()->route('user.index')->with('error', 'Gagal: Anda tidak bisa menghapus akun Anda sendiri.');
         }

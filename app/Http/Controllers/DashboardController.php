@@ -196,7 +196,6 @@ class DashboardController extends Controller
             'menunggu_retur' => PoReceivingHistory::where('status_retur', 'Menunggu Retur')->count(),
             'sudah_diretur' => PoReceivingHistory::where('status_retur', 'Sudah Diretur')->count(),
         ];
-
         // 6. Chart Data: Sales/Outbound (for Owner only)
         $userRole = auth()->user()->role;
         $chartMonthLabels = [];
@@ -207,6 +206,12 @@ class DashboardController extends Controller
         $chartTodayData = [];
         $chartThirtyLabels = [];
         $chartThirtyData = [];
+        $chartThreeMonthsLabels = [];
+        $chartThreeMonthsData = [];
+        $chartSixMonthsLabels = [];
+        $chartSixMonthsData = [];
+        $chartYearLabels = [];
+        $chartYearData = [];
         $topSellingProducts = [];
         $slowMovingProducts = [];
         $aiInsights = [];
@@ -238,8 +243,18 @@ class DashboardController extends Controller
                 ->orderBy('date')
                 ->get();
 
-            $chartWeekLabels = $salesWeekly->map(fn($item) => Carbon::parse($item->date)->format('D, d M'))->toArray();
-            $chartWeekData = $salesWeekly->pluck('total_qty')->map(fn($v) => (int)$v)->toArray();
+            $weekGroups = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $dateStr = Carbon::now()->subDays($i)->format('Y-m-d');
+                $labelStr = Carbon::now()->subDays($i)->format('D, d M');
+                $weekGroups[$labelStr] = 0;
+                $found = $salesWeekly->firstWhere('date', $dateStr);
+                if ($found) {
+                    $weekGroups[$labelStr] = (int)$found->total_qty;
+                }
+            }
+            $chartWeekLabels = array_keys($weekGroups);
+            $chartWeekData = array_values($weekGroups);
 
             // Today (hari ini) data — per hour
             $salesToday = DB::table('t_outbounds')
@@ -250,10 +265,18 @@ class DashboardController extends Controller
                 ->orderBy('hour')
                 ->get();
 
-            $chartTodayLabels = $salesToday->map(fn($item) => $item->hour . ':00')->toArray();
-            $chartTodayData = $salesToday->pluck('total_qty')->map(fn($v) => (int)$v)->toArray();
+            $todayGroups = [];
+            for ($h = 8; $h <= 18; $h++) {
+                $todayGroups[sprintf('%02d:00', $h)] = 0;
+            }
+            foreach ($salesToday as $item) {
+                $hour = $item->hour . ':00';
+                $todayGroups[$hour] = (int)$item->total_qty;
+            }
+            $chartTodayLabels = array_keys($todayGroups);
+            $chartTodayData = array_values($todayGroups);
 
-            // 30 hari terakhir data
+            // 30 hari terakhir data (1 Bulan)
             $thirtyDaysStart = Carbon::now()->subDays(29)->startOfDay();
             $salesThirty = DB::table('t_outbounds')
                 ->join('t_outbound_details', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
@@ -263,8 +286,102 @@ class DashboardController extends Controller
                 ->orderBy('date')
                 ->get();
 
-            $chartThirtyLabels = $salesThirty->map(fn($item) => Carbon::parse($item->date)->format('d M'))->toArray();
-            $chartThirtyData = $salesThirty->pluck('total_qty')->map(fn($v) => (int)$v)->toArray();
+            $monthGroups = [];
+            for ($i = 29; $i >= 0; $i--) {
+                $dateStr = Carbon::now()->subDays($i)->format('Y-m-d');
+                $labelStr = Carbon::now()->subDays($i)->format('d M');
+                $monthGroups[$labelStr] = 0;
+                $found = $salesThirty->firstWhere('date', $dateStr);
+                if ($found) {
+                    $monthGroups[$labelStr] = (int)$found->total_qty;
+                }
+            }
+            $chartThirtyLabels = array_keys($monthGroups);
+            $chartThirtyData = array_values($monthGroups);
+
+            // 3 Bulan (90 hari terakhir, grouped by week)
+            $threeMonthsStart = Carbon::now()->subDays(89)->startOfDay();
+            $sales3M = DB::table('t_outbounds')
+                ->join('t_outbound_details', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
+                ->select('t_outbounds.tanggal_keluar', 't_outbound_details.qty_keluar')
+                ->where('t_outbounds.tanggal_keluar', '>=', $threeMonthsStart)
+                ->get();
+            
+            $groups3M = [];
+            for ($i = 12; $i >= 0; $i--) {
+                $wStart = Carbon::now()->subWeeks($i)->startOfWeek();
+                $label = 'W-' . $wStart->format('d M');
+                $groups3M[$label] = 0;
+            }
+            foreach ($sales3M as $item) {
+                $itemWStart = Carbon::parse($item->tanggal_keluar)->startOfWeek();
+                $label = 'W-' . $itemWStart->format('d M');
+                if (isset($groups3M[$label])) {
+                    $groups3M[$label] += $item->qty_keluar;
+                }
+            }
+            $chartThreeMonthsLabels = array_keys($groups3M);
+            $chartThreeMonthsData = array_values($groups3M);
+
+            // 6 Bulan (180 hari terakhir, grouped by month)
+            $sixMonthsStart = Carbon::now()->subMonths(5)->startOfMonth();
+            $sales6M = DB::table('t_outbounds')
+                ->join('t_outbound_details', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
+                ->select('t_outbounds.tanggal_keluar', 't_outbound_details.qty_keluar')
+                ->where('t_outbounds.tanggal_keluar', '>=', $sixMonthsStart)
+                ->get();
+            
+            $groups6M = [];
+            $indonesianMonths = [
+                'January' => 'Jan', 'February' => 'Feb', 'March' => 'Mar', 'April' => 'Apr', 'May' => 'Mei', 'June' => 'Jun',
+                'July' => 'Jul', 'August' => 'Agu', 'September' => 'Sep', 'October' => 'Okt', 'November' => 'Nov', 'December' => 'Des'
+            ];
+            for ($i = 5; $i >= 0; $i--) {
+                $mStart = Carbon::now()->subMonths($i)->startOfMonth();
+                $engMonth = $mStart->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $mStart->format('Y');
+                $groups6M[$label] = 0;
+            }
+            foreach ($sales6M as $item) {
+                $itemMonth = Carbon::parse($item->tanggal_keluar)->startOfMonth();
+                $engMonth = $itemMonth->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $itemMonth->format('Y');
+                if (isset($groups6M[$label])) {
+                    $groups6M[$label] += $item->qty_keluar;
+                }
+            }
+            $chartSixMonthsLabels = array_keys($groups6M);
+            $chartSixMonthsData = array_values($groups6M);
+
+            // 1 Tahun (365 hari terakhir, grouped by month)
+            $oneYearStart = Carbon::now()->subMonths(11)->startOfMonth();
+            $sales1Y = DB::table('t_outbounds')
+                ->join('t_outbound_details', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
+                ->select('t_outbounds.tanggal_keluar', 't_outbound_details.qty_keluar')
+                ->where('t_outbounds.tanggal_keluar', '>=', $oneYearStart)
+                ->get();
+            
+            $groups1Y = [];
+            for ($i = 11; $i >= 0; $i--) {
+                $mStart = Carbon::now()->subMonths($i)->startOfMonth();
+                $engMonth = $mStart->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $mStart->format('Y');
+                $groups1Y[$label] = 0;
+            }
+            foreach ($sales1Y as $item) {
+                $itemMonth = Carbon::parse($item->tanggal_keluar)->startOfMonth();
+                $engMonth = $itemMonth->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $itemMonth->format('Y');
+                if (isset($groups1Y[$label])) {
+                    $groups1Y[$label] += $item->qty_keluar;
+                }
+            }
+            $chartYearLabels = array_keys($groups1Y);
+            $chartYearData = array_values($groups1Y);
 
             // Top 5 Best Selling Products (30 hari terakhir)
             $topSelling = DB::table('t_outbound_details')
@@ -366,6 +483,12 @@ class DashboardController extends Controller
             'chartTodayData',
             'chartThirtyLabels',
             'chartThirtyData',
+            'chartThreeMonthsLabels',
+            'chartThreeMonthsData',
+            'chartSixMonthsLabels',
+            'chartSixMonthsData',
+            'chartYearLabels',
+            'chartYearData',
             'topSellingProducts',
             'slowMovingProducts',
             'aiInsights',
