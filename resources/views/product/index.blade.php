@@ -119,9 +119,11 @@
             currentStatus = status;
 
             document.querySelectorAll('#statusFilterGroup .chart-filter-btn').forEach(b => {
+                b.classList.remove('chart-filter-active');
                 b.style.background = 'transparent';
                 b.style.color = '#64748b';
             });
+            btn.classList.add('chart-filter-active');
             btn.style.background = 'rgba(56,189,248,0.15)';
             btn.style.color = '#38bdf8';
 

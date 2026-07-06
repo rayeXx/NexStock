@@ -368,12 +368,14 @@
                     datasets: [{
                         label: 'Qty Terjual',
                         data: initData.data,
-                        backgroundColor: makeGradient('rgba(56,189,248,0.45)', 'rgba(56,189,248,0.03)'),
+                        backgroundColor: 'rgba(56, 189, 248, 0.22)',
                         borderColor: '#38bdf8',
                         borderWidth: 1.5,
                         borderRadius: 6,
                         borderSkipped: false,
-                        hoverBackgroundColor: 'rgba(56,189,248,0.70)',
+                        hoverBackgroundColor: 'rgba(56, 189, 248, 0.65)',
+                        hoverBorderColor: '#38bdf8',
+                        hoverBorderWidth: 1.5,
                     }]
                 },
                 options: {
@@ -425,7 +427,7 @@
 
             window.switchPeriod = function(period, btn) {
                 // Update active button styling by toggling the class
-                document.querySelectorAll('.chart-filter-btn').forEach(b => {
+                document.querySelectorAll('#chartFilterGroup .chart-filter-btn').forEach(b => {
                     b.classList.remove('chart-filter-active');
                 });
                 btn.classList.add('chart-filter-active');
@@ -433,7 +435,7 @@
                 const dataset = chartDataSets[period];
                 salesChart.data.labels = dataset.labels;
                 salesChart.data.datasets[0].data = dataset.data;
-                salesChart.update('active');
+                salesChart.update();
                 updateStats(dataset.data);
             };
         });

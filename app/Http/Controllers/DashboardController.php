@@ -256,10 +256,14 @@ class DashboardController extends Controller
             $chartWeekLabels = array_keys($weekGroups);
             $chartWeekData = array_values($weekGroups);
 
+            $hourSelect = DB::getDriverName() === 'mysql'
+                ? 'DATE_FORMAT(t_outbounds.tanggal_keluar, "%H") as hour'
+                : 'STRFTIME(\'%H\', t_outbounds.tanggal_keluar) as hour';
+
             // Today (hari ini) data — per hour
             $salesToday = DB::table('t_outbounds')
                 ->join('t_outbound_details', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
-                ->select(DB::raw('STRFTIME(\'%H\', t_outbounds.tanggal_keluar) as hour'), DB::raw('SUM(t_outbound_details.qty_keluar) as total_qty'))
+                ->select(DB::raw($hourSelect), DB::raw('SUM(t_outbound_details.qty_keluar) as total_qty'))
                 ->whereDate('t_outbounds.tanggal_keluar', Carbon::today())
                 ->groupBy('hour')
                 ->orderBy('hour')

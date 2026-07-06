@@ -29,7 +29,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Clear existing data in correct dependency order
-        DB::statement('PRAGMA foreign_keys = OFF;'); // SQLite syntax
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } else {
+            DB::statement('PRAGMA foreign_keys = OFF;');
+        }
         
         StockOpnameDetail::truncate();
         StockOpname::truncate();
@@ -46,7 +50,11 @@ class DatabaseSeeder extends Seeder
         Category::truncate();
         User::truncate();
 
-        DB::statement('PRAGMA foreign_keys = ON;');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } else {
+            DB::statement('PRAGMA foreign_keys = ON;');
+        }
 
         // 2. Seed Users
         $owner = User::create([
