@@ -43,12 +43,12 @@
             <div class="form-group">
                 <label class="form-label" for="foto_bukti">Foto Bukti Fisik Kerusakan *</label>
                 <input type="file" name="foto_bukti" id="foto_bukti" class="form-control" accept="image/*" required style="padding: 10px;">
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Format: JPG, PNG, WebP. Maksimal 2MB. Foto diperlukan untuk validasi Owner.</p>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Format: JPG, PNG, WebP. Maksimal 2MB. Foto diperlukan untuk validasi Admin.</p>
             </div>
 
             <div style="padding: 0.75rem 1rem; background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.2); border-radius: 0.5rem; margin-bottom: 1.5rem;">
                 <p style="color: #fca5a5; font-size: 0.85rem; margin: 0;">
-                    ⚠ <strong>Perhatian:</strong> Setelah laporan ini dikirim, stok akan langsung dikurangi dari database dan menunggu keputusan Owner. Jika laporan <em>ditolak</em>, stok otomatis dikembalikan.
+                    ⚠ <strong>Perhatian:</strong> Setelah laporan ini dikirim, stok akan langsung dikurangi dari database dan menunggu keputusan Admin. Jika laporan <em>ditolak</em>, stok otomatis dikembalikan.
                 </p>
             </div>
 

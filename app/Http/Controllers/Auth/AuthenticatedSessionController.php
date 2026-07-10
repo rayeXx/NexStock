@@ -28,6 +28,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if (Auth::user()->role === 'staff_gudang') {
+            $intended = $request->session()->get('url.intended');
+            if ($intended && (str_contains($intended, '/dashboard') || $intended === url('/') || $intended === route('dashboard'))) {
+                $request->session()->forget('url.intended');
+            }
+            return redirect()->intended(route('inbound.index', absolute: false));
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
@@ -42,6 +50,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

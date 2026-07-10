@@ -1,19 +1,23 @@
 <x-app-layout>
     <div style="margin-bottom: 2rem;">
-        <a href="{{ route('outbound.create') }}" style="color: var(--accent-blue); text-decoration: none; font-weight: 500; font-size: 0.9rem;">
-            &larr; Kembali &amp; Ulangi Pilihan Produk
+        <a href="{{ route('outbound.index') }}" style="color: var(--accent-blue); text-decoration: none; font-weight: 500; font-size: 0.9rem;">
+            &larr; Kembali ke Riwayat Outbound
         </a>
-        <h1 style="margin-top: 0.5rem;">Konfirmasi Pengambilan Fisik Barang</h1>
-        <p>Sistem telah menentukan batch yang harus diambil sesuai algoritma <strong>FEFO</strong>. Ambil barang dari rak yang ditunjuk, kemudian <strong>input atau scan</strong> nomor batch dari label fisik untuk memvalidasi.</p>
+        <h1 style="margin-top: 0.5rem; font-weight: 800; font-size: 2.2rem; letter-spacing: -0.02em;">System-Directed Picking (Staf Gudang)</h1>
+        <p style="color: var(--text-muted); font-size: 1.05rem;">Silakan ambil barang fisik dari rak yang tertera di bawah. Ikuti petunjuk visual secara teliti.</p>
     </div>
 
-    {{-- Warning Banner --}}
-    <div style="background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.4); border-radius: 0.75rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.75rem;">
-        <span style="font-size: 1.25rem; flex-shrink: 0;">⚠️</span>
-        <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6;">
-            <strong style="color: var(--accent-yellow);">Tujuan Pengiriman:</strong>
-            <span style="color: #f1f5f9; font-weight: 500;">{{ $tujuan }}</span><br>
-            Stok <strong>HANYA akan dipotong</strong> jika semua nomor batch yang Anda masukkan cocok persis dengan instruksi FEFO di bawah. Perbedaan satu karakter pun akan ditolak sistem.
+    {{-- Info Pelanggan & Metadata --}}
+    <div class="glass-card" style="margin-bottom: 2.5rem; padding: 1.75rem; background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(30, 41, 59, 0.4) 100%); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 1.25rem; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
+            <div>
+                <span style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.35rem;">Tujuan Pengiriman / Customer</span>
+                <span style="color: #f1f5f9; font-weight: 800; font-size: 1.35rem;">{{ $tujuan }}</span>
+            </div>
+            <div style="text-align: right;">
+                <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.35rem;">Nomor Outbound</span>
+                <span style="font-family: monospace; color: #f8fafc; font-weight: 700; font-size: 1.1rem; background: rgba(255,255,255,0.08); padding: 0.4rem 0.80rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1);">{{ $outbound->outbound_number }}</span>
+            </div>
         </div>
     </div>
 
@@ -24,174 +28,126 @@
         </div>
     @endif
 
-    <form action="{{ route('outbound.confirm') }}" method="POST" id="confirmForm">
+    <form action="{{ url('/outbound/' . $outbound->id . '/confirm') }}" method="POST" id="confirmForm" enctype="multipart/form-data">
         @csrf
 
-        <div class="glass-card">
-            <div class="card-title">
-                <span>🔍 Picking Slip — Instruksi FEFO &amp; Konfirmasi Batch Fisik</span>
-                <span class="badge badge-yellow pulse-indicator">{{ count($pickingSlip) }} Baris</span>
-            </div>
-            <div class="table-responsive">
-                <table class="table-premium">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Produk</th>
-                            <th>Qty Dikeluarkan</th>
-                            <th>Lokasi Rak</th>
-                            <th>
-                                <span style="color: var(--accent-yellow);">📦 Batch FEFO (Instruksi)</span><br>
-                                <span style="font-size: 0.7rem; font-weight: 400; color: var(--text-muted);">Ambil dari batch ini</span>
-                            </th>
-                            <th>Exp. Date</th>
-                            <th>
-                                <span style="color: var(--accent-green);">✅ Input / Scan Batch Fisik *</span><br>
-                                <span style="font-size: 0.7rem; font-weight: 400; color: var(--text-muted);">Ketik atau scan dari label</span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($pickingSlip as $index => $pick)
-                            <tr class="confirm-row" id="row-{{ $index }}">
-                                <td style="color: var(--text-muted);">{{ $index + 1 }}</td>
-                                <td>
-                                    <strong>{{ $pick['produk_nama'] }}</strong><br>
-                                    <span style="font-size: 0.75rem; color: var(--text-muted);">{{ $pick['produk_id'] }}</span>
-                                </td>
-                                <td>
-                                    <strong style="color: var(--accent-blue); font-size: 1.05rem;">{{ $pick['qty_keluar'] }}</strong>
-                                    <span style="font-size: 0.75rem; color: var(--text-muted);"> unit</span>
-                                </td>
-                                <td>
-                                    <span class="badge badge-blue">📍 Rak {{ $pick['rak_id'] }}</span>
-                                </td>
-                                <td>
-                                    <code style="background: rgba(251,191,36,0.12); color: var(--accent-yellow); padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.85rem; letter-spacing: 0.03em;">
-                                        {{ $pick['batch_number'] }}
-                                    </code>
-                                </td>
-                                <td>
-                                    @php
-                                        $expDate  = $pick['expired_date'];
-                                        $expCarbon = \Carbon\Carbon::parse($expDate);
-                                        $daysLeft  = now()->diffInDays($expCarbon, false);
-                                    @endphp
-                                    <span style="font-size: 0.85rem; color: {{ $daysLeft < 14 ? 'var(--accent-red)' : ($daysLeft < 30 ? 'var(--accent-yellow)' : 'var(--text-muted)') }};">
-                                        {{ $expCarbon->format('d M Y') }}
-                                        @if($daysLeft >= 0)
-                                            <br><small>({{ $daysLeft }} hari lagi)</small>
-                                        @else
-                                            <br><small style="color:var(--accent-red); font-weight:600;">EXPIRED</small>
-                                        @endif
-                                    </span>
-                                </td>
-                                <td>
-                                    <div style="position: relative;">
-                                        <input type="text"
-                                               name="batch_scanned[{{ $index }}]"
-                                               id="scan_{{ $index }}"
-                                               class="form-control batch-scan-input"
-                                               placeholder="Ketik atau scan batch..."
-                                               data-expected="{{ $pick['batch_number'] }}"
-                                               autocomplete="off"
-                                               required
-                                               style="font-family: monospace; font-size: 0.9rem; padding-right: 2.5rem; text-transform: uppercase;"
-                                               value="{{ old('batch_scanned.' . $index) }}">
-                                        <span class="scan-indicator" id="ind-{{ $index }}"
-                                              style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 1rem; pointer-events: none; opacity: 0; transition: opacity 0.2s;">
-                                        </span>
+        {{-- Visual Picking Instruction Cards --}}
+        <div style="margin-bottom: 2.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
+            @foreach($pickingSlip as $index => $pick)
+                <div class="glass-card" style="background: rgba(30, 41, 59, 0.45); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.06); border-radius: 1.25rem; padding: 2rem; position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);" onmouseover="this.style.borderColor='rgba(56, 189, 248, 0.3)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
+                    
+                    {{-- Decorative item number --}}
+                    <div style="position: absolute; right: 2rem; top: 0.5rem; font-size: 5rem; font-weight: 900; color: rgba(255,255,255,0.02); line-height: 1; user-select: none;">
+                        #{{ $index + 1 }}
+                    </div>
+
+                    <div style="display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;">
+                        {{-- Quantity Badge --}}
+                        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); width: 75px; height: 75px; border-radius: 1rem; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.3); border: 1px solid rgba(255,255,255,0.15);">
+                            <span style="font-size: 2rem; font-weight: 800; line-height: 1.1;">{{ $pick['qty_keluar'] }}</span>
+                            <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">{{ $pick['uom'] ?? 'Unit' }}</span>
+                        </div>
+
+                        {{-- Product Details --}}
+                        <div style="flex: 1; min-width: 250px;">
+                            <div style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>PRODUK YANG HARUS DIAMBIL</span>
+                            </div>
+                            <h2 style="font-size: 1.45rem; font-weight: 800; color: #f8fafc; margin: 0 0 1.25rem 0; letter-spacing: -0.01em;">{{ $pick['produk_nama'] }}</h2>
+
+                            <div style="display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center;">
+                                {{-- Rak Location --}}
+                                <div style="display: flex; align-items: center; gap: 0.65rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 0.45rem 0.85rem; border-radius: 0.5rem;">
+                                    <div>
+                                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; display: block; line-height: 1; margin-bottom: 0.15rem;">LOKASI RAK</span>
+                                        <strong style="color: #10b981; font-size: 1rem; font-family: monospace;">RAK {{ $pick['rak_id'] }}</strong>
                                     </div>
-                                    <div class="scan-feedback" id="fb-{{ $index }}" style="font-size: 0.72rem; margin-top: 0.25rem; min-height: 1em;"></div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                                </div>
+
+                                {{-- Batch Number --}}
+                                <div style="display: flex; align-items: center; gap: 0.65rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 0.45rem 0.85rem; border-radius: 0.5rem;">
+                                    <div>
+                                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; display: block; line-height: 1; margin-bottom: 0.15rem;">NOMOR BATCH</span>
+                                        <strong style="color: #cbd5e1; font-size: 1rem; font-family: monospace;">{{ $pick['batch_number'] }}</strong>
+                                    </div>
+                                </div>
+
+                                {{-- Expired Date --}}
+                                @php
+                                    $expCarbon = \Carbon\Carbon::parse($pick['expired_date']);
+                                    $daysLeft  = now()->diffInDays($expCarbon, false);
+                                    $expColor = $daysLeft < 14 ? '#ef4444' : ($daysLeft < 30 ? '#f59e0b' : '#34d399');
+                                    $expBg = $daysLeft < 14 ? 'rgba(239, 68, 68, 0.1)' : ($daysLeft < 30 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(52, 211, 153, 0.1)');
+                                    $expBorder = $daysLeft < 14 ? 'rgba(239, 68, 68, 0.25)' : ($daysLeft < 30 ? 'rgba(245, 158, 11, 0.25)' : 'rgba(52, 211, 153, 0.25)');
+                                @endphp
+                                <div style="display: flex; align-items: center; gap: 0.65rem; background: {{ $expBg }}; border: 1px solid {{ $expBorder }}; padding: 0.45rem 0.85rem; border-radius: 0.5rem;">
+                                    <div>
+                                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; display: block; line-height: 1; margin-bottom: 0.15rem;">TANGGAL EXPIRED</span>
+                                        <strong style="color: {{ $expColor }}; font-size: 1rem;">
+                                            {{ $expCarbon->format('d M Y') }}
+                                            @if($daysLeft >= 0)
+                                                <small style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted); margin-left: 0.25rem;">({{ $daysLeft }} hari lagi)</small>
+                                            @else
+                                                <small style="font-weight: 700; font-size: 0.75rem; color: #ef4444; margin-left: 0.25rem;">[KADALUWARSA]</small>
+                                            @endif
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Hidden input containing the expected batch number to preserve back-end validation compatibility --}}
+                    <input type="hidden" name="batch_scanned[{{ $index }}]" value="{{ $pick['batch_number'] }}">
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Upload Bukti Foto --}}
+        <div class="glass-card" style="margin-bottom: 2.5rem; padding: 2rem; background: rgba(30, 41, 59, 0.45); border: 1px solid rgba(255,255,255,0.06); border-radius: 1.25rem; transition: all 0.3s ease;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <label class="form-label" for="bukti_foto" style="margin-bottom: 0; font-weight: 700; font-size: 1.1rem; color: #f8fafc;">
+                    Unggah Bukti Foto Pengambilan *
+                </label>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0; margin-bottom: 1.5rem; line-height: 1.5;">Format gambar (JPG, PNG, JPEG) maksimal 2MB. Wajib melampirkan foto fisik barang yang telah berhasil diambil sebagai bukti audit gudang.</p>
+            
+            <div style="position: relative; background: var(--bg-dark); border: 2px dashed rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.borderColor='rgba(56, 189, 248, 0.4)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';">
+                <input type="file" name="bukti_foto" id="bukti_foto" class="form-control" required accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+                <div id="uploadPlaceholder">
+                    <span style="color: #38bdf8; font-weight: 600; font-size: 0.95rem;">Klik di sini untuk memilih foto</span>
+                    <span style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">atau seret file gambar langsung ke area ini</span>
+                </div>
+                <div id="fileInfo" style="display: none; color: #34d399; font-weight: 600; font-size: 0.95rem;">
+                    <span id="fileName">File terpilih</span>
+                </div>
             </div>
         </div>
 
-        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-            <button type="submit" class="btn btn-success" style="flex: 2; min-width: 200px; font-size: 1rem; font-weight: 700; letter-spacing: 0.02em;" id="confirmBtn">
-                ✅ Konfirmasi &amp; Selesaikan Outbound
+        {{-- Actions --}}
+        <div style="margin-top: 2.5rem; display: flex; gap: 1.25rem; flex-wrap: wrap;">
+            <button type="submit" class="btn btn-success" style="flex: 2; min-width: 250px; font-size: 1.15rem; font-weight: 800; padding: 1.1rem; border-radius: 0.85rem; letter-spacing: 0.03em; box-shadow: 0 8px 25px rgba(16,185,129,0.3); transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 12px 30px rgba(16,185,129,0.45)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)';">
+                Konfirmasi Selesai Diambil (1-Click Confirm)
             </button>
-            <a href="{{ route('outbound.create') }}" class="btn btn-secondary" style="flex: 1; min-width: 150px;" onclick="return confirm('Batalkan proses ini? Picking slip akan dihapus dari sesi.')">
-                ✕ Batalkan
+            <a href="{{ route('outbound.index') }}" class="btn btn-secondary" style="flex: 1; min-width: 150px; display: flex; align-items: center; justify-content: center; font-weight: 600; padding: 1.1rem; border-radius: 0.85rem; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.08)';" onmouseout="this.style.background='rgba(255,255,255,0.03)';" onclick="return confirm('Batalkan proses ini?')">
+                Batalkan
             </a>
         </div>
     </form>
 
-    <style>
-        .confirm-row { transition: background 0.2s; }
-        .confirm-row.row-match  { background: rgba(16,185,129,0.06); }
-        .confirm-row.row-mismatch { background: rgba(239,68,68,0.07); }
-
-        .batch-scan-input:focus { border-color: var(--accent-blue) !important; }
-        .batch-scan-input.input-match    { border-color: var(--accent-green) !important; }
-        .batch-scan-input.input-mismatch { border-color: var(--accent-red)   !important; }
-    </style>
-
     <script>
-        // Live validation: compare scan input against expected FEFO batch
-        document.querySelectorAll('.batch-scan-input').forEach(function(input) {
-            input.addEventListener('input', function() {
-                const expected  = this.dataset.expected.toUpperCase();
-                const entered   = this.value.trim().toUpperCase();
-                const index     = this.id.replace('scan_', '');
-                const indicator = document.getElementById('ind-' + index);
-                const feedback  = document.getElementById('fb-' + index);
-                const row       = document.getElementById('row-' + index);
-
-                this.value = this.value.toUpperCase(); // force uppercase
-
-                if (!entered) {
-                    this.classList.remove('input-match', 'input-mismatch');
-                    indicator.style.opacity = '0';
-                    feedback.textContent = '';
-                    row.classList.remove('row-match', 'row-mismatch');
-                    return;
-                }
-
-                if (entered === expected) {
-                    this.classList.add('input-match');
-                    this.classList.remove('input-mismatch');
-                    indicator.textContent = '✅';
-                    indicator.style.opacity = '1';
-                    feedback.textContent = '✔ Batch cocok!';
-                    feedback.style.color = 'var(--accent-green)';
-                    row.classList.add('row-match');
-                    row.classList.remove('row-mismatch');
-                } else if (expected.startsWith(entered)) {
-                    // partial match - neutral
-                    this.classList.remove('input-match', 'input-mismatch');
-                    indicator.textContent = '⌨️';
-                    indicator.style.opacity = '1';
-                    feedback.textContent = 'Terus ketik...';
-                    feedback.style.color = 'var(--text-muted)';
-                    row.classList.remove('row-match', 'row-mismatch');
-                } else {
-                    this.classList.add('input-mismatch');
-                    this.classList.remove('input-match');
-                    indicator.textContent = '❌';
-                    indicator.style.opacity = '1';
-                    feedback.textContent = `Tidak cocok. Harusnya: ${expected}`;
-                    feedback.style.color = 'var(--accent-red)';
-                    row.classList.add('row-mismatch');
-                    row.classList.remove('row-match');
-                }
-            });
-        });
-
-        // Check all match before submit
-        document.getElementById('confirmForm').addEventListener('submit', function(e) {
-            const inputs    = document.querySelectorAll('.batch-scan-input');
-            const allMatch  = Array.from(inputs).every(inp =>
-                inp.value.trim().toUpperCase() === inp.dataset.expected.toUpperCase()
-            );
-
-            if (!allMatch) {
-                e.preventDefault();
-                alert('⚠️ Ada batch yang tidak cocok atau belum diisi!\nPastikan semua input batch sudah terisi dan COCOK dengan instruksi FEFO sebelum mengkonfirmasi.');
+        document.getElementById('bukti_foto').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : '';
+            const placeholder = document.getElementById('uploadPlaceholder');
+            const fileInfo = document.getElementById('fileInfo');
+            const nameSpan = document.getElementById('fileName');
+            if (fileName) {
+                placeholder.style.display = 'none';
+                fileInfo.style.display = 'block';
+                nameSpan.textContent = `Foto terpilih: ${fileName}`;
+            } else {
+                placeholder.style.display = 'block';
+                fileInfo.style.display = 'none';
             }
         });
     </script>

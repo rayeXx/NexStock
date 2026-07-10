@@ -50,7 +50,7 @@
                 <span class="badge {{ $selectedPo->status == 'Completed' ? 'badge-green' : 'badge-yellow' }}">{{ $selectedPo->status }}</span>
             </div>
 
-            <form method="POST" action="{{ route('inbound.store') }}">
+            <form method="POST" action="{{ route('inbound.store') }}" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="po_id" value="{{ $selectedPo->id }}">
 
@@ -83,30 +83,30 @@
                             <div class="grid-4" style="gap:1rem;">
                                 <div>
                                     <label class="form-label">Qty Datang</label>
-                                    <input type="number" name="items[{{ $index }}][qty_datang]" id="qty_datang_{{ $index }}" class="form-input" min="0" max="{{ $sisaQty }}" value="0" oninput="calculateReceive({{ $index }})">
+                                    <input type="number" name="items[{{ $index }}][qty_datang]" id="qty_datang_{{ $index }}" class="form-control" min="0" max="{{ $sisaQty }}" value="0" oninput="calculateReceive({{ $index }})" style="background: rgba(15, 23, 42, 0.8);">
                                 </div>
                                 <div>
                                     <label class="form-label">Qty Rusak</label>
-                                    <input type="number" name="items[{{ $index }}][qty_rusak]" id="qty_rusak_{{ $index }}" class="form-input" min="0" max="{{ $sisaQty }}" value="0" oninput="calculateReceive({{ $index }})">
+                                    <input type="number" name="items[{{ $index }}][qty_rusak]" id="qty_rusak_{{ $index }}" class="form-control" min="0" max="{{ $sisaQty }}" value="0" oninput="calculateReceive({{ $index }})" style="background: rgba(15, 23, 42, 0.8);">
                                 </div>
                                 <div>
                                     <label class="form-label">Qty Diterima (Baik)</label>
-                                    <input type="number" id="qty_diterima_{{ $index }}" class="form-input" readonly style="background:rgba(255,255,255,0.05); color:var(--accent-green); font-weight:bold;">
+                                    <input type="number" id="qty_diterima_{{ $index }}" class="form-control" readonly style="background: rgba(255, 255, 255, 0.03); color: var(--accent-green); font-weight: bold; border-color: rgba(255, 255, 255, 0.05); opacity: 0.8; cursor: not-allowed;">
                                 </div>
                                 <div>
                                     <label class="form-label">Kondisi Barang</label>
-                                    <input type="text" id="kondisi_{{ $index }}" class="form-input" readonly style="background:rgba(255,255,255,0.05);">
+                                    <input type="text" id="kondisi_{{ $index }}" class="form-control" readonly style="background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.05); opacity: 0.8; cursor: not-allowed;">
                                 </div>
                             </div>
                             
                             <div class="grid-3" style="gap:1rem; margin-top:1rem;" id="good_fields_{{ $index }}">
                                 <div>
                                     <label class="form-label">Tanggal Expired</label>
-                                    <input type="date" name="items[{{ $index }}][expired_date]" id="expired_{{ $index }}" class="form-input">
+                                    <input type="date" name="items[{{ $index }}][expired_date]" id="expired_{{ $index }}" class="form-control" style="background: rgba(15, 23, 42, 0.8);">
                                 </div>
                                 <div>
                                     <label class="form-label">Rak Penyimpanan</label>
-                                    <select name="items[{{ $index }}][rak_id]" id="rak_{{ $index }}" class="form-input">
+                                    <select name="items[{{ $index }}][rak_id]" id="rak_{{ $index }}" class="form-control" style="background: rgba(15, 23, 42, 0.8); color: var(--text-main);">
                                         <option value="">-- Pilih Rak --</option>
                                         @foreach($racks as $r)
                                             <option value="{{ $r->kode_rak }}" {{ $loop->first ? 'selected' : '' }}>Rak {{ $r->kode_rak }} (Sisa: {{ $r->kapasitas_maksimum_volume - $r->kapasitas_terpakai }})</option>
@@ -115,14 +115,14 @@
                                 </div>
                                 <div>
                                     <label class="form-label">Batch Supplier (Opsional)</label>
-                                    <input type="text" name="items[{{ $index }}][batch_supplier]" class="form-input" placeholder="Masukkan jika ada">
+                                    <input type="text" name="items[{{ $index }}][batch_supplier]" class="form-control" placeholder="Masukkan jika ada" style="background: rgba(15, 23, 42, 0.8);">
                                 </div>
                             </div>
 
                             <div class="grid-2" style="gap:1rem; margin-top:1rem; display:none;" id="damaged_fields_{{ $index }}">
                                 <div>
                                     <label class="form-label">Alasan Kerusakan</label>
-                                    <select name="items[{{ $index }}][alasan_kerusakan]" id="alasan_{{ $index }}" class="form-input" onchange="toggleCatatan({{ $index }})">
+                                    <select name="items[{{ $index }}][alasan_kerusakan]" id="alasan_{{ $index }}" class="form-control" onchange="toggleCatatan({{ $index }})" style="background: rgba(15, 23, 42, 0.8); color: var(--text-main);">
                                         <option value="">-- Pilih Alasan --</option>
                                         <option value="Kemasan penyok">Kemasan penyok</option>
                                         <option value="Kardus basah">Kardus basah</option>
@@ -134,12 +134,24 @@
                                 </div>
                                 <div id="catatan_container_{{ $index }}" style="display:none;">
                                     <label class="form-label">Catatan Kerusakan</label>
-                                    <input type="text" name="items[{{ $index }}][catatan]" class="form-input" placeholder="Jelaskan kerusakan...">
+                                    <input type="text" name="items[{{ $index }}][catatan]" class="form-control" placeholder="Jelaskan kerusakan..." style="background: rgba(15, 23, 42, 0.8);">
                                 </div>
                             </div>
                         </div>
                         @endif
                     @endforeach
+                </div>
+
+                {{-- Upload Bukti Serah Terima --}}
+                <div style="background: rgba(15, 23, 42, 0.4); padding: 1.5rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.08); margin-top: 1.5rem;">
+                    <div style="margin-bottom: 1rem; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem; font-size: 1.05rem; font-weight: 600; color: #fff;">
+                        Upload Bukti Serah Terima
+                    </div>
+                    <div>
+                        <label class="form-label" for="foto_bukti" style="font-weight: 600; margin-bottom: 0.5rem;">Foto Bukti Serah Terima @if(auth()->user()->role === 'staff_gudang') <span style="color: var(--accent-red);">*</span> @endif</label>
+                        <input type="file" name="foto_bukti" id="foto_bukti" class="form-control" accept="image/*" @if(auth()->user()->role === 'staff_gudang') required @endif style="padding: 8px 12px; height: auto; background: rgba(15, 23, 42, 0.8);">
+                        <small style="color:var(--text-muted); display:block; margin-top:0.5rem;">Format file: JPG, JPEG, PNG (Maksimal 2MB).</small>
+                    </div>
                 </div>
 
                 <div style="margin-top:2rem; display:flex; gap:1rem;">

@@ -4,9 +4,11 @@
             <h1>Manajemen User & Operator</h1>
             <p>Kelola data akun operator lapangan, admin logistik, dan hak akses sistem (RBAC).</p>
         </div>
+        @if(auth()->user()->role !== 'owner')
         <a href="{{ route('user.create') }}" class="btn btn-primary">
             + Daftarkan User Baru
         </a>
+        @endif
     </div>
 
     {{-- Search Bar --}}
@@ -28,7 +30,9 @@
                         <th>Email Kredensial</th>
                         <th>Peran (Role)</th>
                         <th>Terdaftar Sejak</th>
+                        @if(auth()->user()->role !== 'owner')
                         <th>Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -61,6 +65,7 @@
                                 @endif
                             </td>
                             <td>{{ $user->created_at->format('d M Y') }}</td>
+                            @if(auth()->user()->role !== 'owner')
                             <td>
                                 <div style="display: flex; gap: 0.5rem;">
                                     @if(auth()->user()->role === 'admin_gudang' && $user->role === 'owner')
@@ -89,6 +94,7 @@
                                     @endif
                                 </div>
                             </td>
+                            @endif
                         </tr>
                     @endforeach
                 </tbody>

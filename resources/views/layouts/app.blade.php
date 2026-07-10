@@ -108,6 +108,7 @@
             <nav class="sidebar-nav-menu">
                 <div class="nav-section-title">Menu Utama</div>
                 
+                @if(auth()->user()->role !== 'staff_gudang')
                 <a href="{{ route('dashboard') }}" class="sidebar-nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="7" height="9"></rect>
@@ -117,9 +118,11 @@
                     </svg>
                     <span>Dashboard</span>
                 </a>
+                @endif
 
-                @if(auth()->user()->role !== 'owner')
-                <div class="nav-section-title" style="margin-top: 1.25rem;">Transaksi</div>
+                @if(auth()->user()->role !== 'staff_gudang')
+                    <div class="nav-section-title" style="margin-top: 1.25rem;">Transaksi</div>
+                @endif
 
                 <a href="{{ route('inbound.index') }}" class="sidebar-nav-link {{ request()->routeIs('inbound.*') ? 'active' : '' }}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -146,6 +149,16 @@
                     <span>Karantina (Rusak)</span>
                 </a>
 
+                <a href="{{ route('destruction.index') }}" class="sidebar-nav-link {{ request()->routeIs('destruction.*') ? 'active' : '' }}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                    <span>Pemusnahan Barang</span>
+                </a>
+
                 <a href="{{ route('opname.index') }}" class="sidebar-nav-link {{ request()->routeIs('opname.*') ? 'active' : '' }}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -156,36 +169,24 @@
                     </svg>
                     <span>Stock Opname</span>
                 </a>
-                @endif
 
-                {{-- Staff Gudang: Pengajuan Restock --}}
-                @if(auth()->user()->role === 'staff_gudang')
-                <div class="nav-section-title" style="margin-top: 1.25rem;">Pengajuan</div>
 
-                <a href="{{ route('restock-request.create') }}" class="sidebar-nav-link {{ request()->routeIs('restock-request.create') ? 'active' : '' }}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="12" y1="18" x2="12" y2="12"></line>
-                        <line x1="9" y1="15" x2="15" y2="15"></line>
-                    </svg>
-                    <span>Ajukan Restock</span>
-                </a>
-
-                <a href="{{ route('restock-request.history') }}" class="sidebar-nav-link {{ request()->routeIs('restock-request.history') ? 'active' : '' }}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    <span>Riwayat Pengajuan</span>
-                </a>
-                @endif
 
                 <!-- Admin & Owner Master Data / Procurement -->
                 @if(auth()->user()->role === 'admin_gudang' || auth()->user()->role === 'owner')
                     <div class="nav-section-title" style="margin-top: 1.25rem;">{{ auth()->user()->role === 'owner' ? 'Monitoring' : 'Administrasi & Data' }}</div>
 
-                    @if(auth()->user()->role === 'admin_gudang')
+                    @if(auth()->user()->role === 'owner')
+                    <a href="{{ route('financial.index') }}" class="sidebar-nav-link {{ request()->routeIs('financial.*') ? 'active' : '' }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        <span>Analisis Keuangan</span>
+                    </a>
+                    @endif
+
                     <a href="{{ route('po.index') }}" class="sidebar-nav-link {{ request()->routeIs('po.*') ? 'active' : '' }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -195,15 +196,6 @@
                         </svg>
                         <span>Daftar PO</span>
                     </a>
-
-                    <a href="{{ route('restock-request.review') }}" class="sidebar-nav-link {{ request()->routeIs('restock-request.review') ? 'active' : '' }}">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 11l3 3L22 4"></path>
-                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                        </svg>
-                        <span>Review Pengajuan</span>
-                    </a>
-                    @endif
 
                     <a href="{{ route('product.index') }}" class="sidebar-nav-link {{ request()->routeIs('product.*') ? 'active' : '' }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -215,7 +207,6 @@
                         <span>Master Produk</span>
                     </a>
 
-                    @if(auth()->user()->role === 'admin_gudang')
                     <a href="{{ route('supplier.index') }}" class="sidebar-nav-link {{ request()->routeIs('supplier.*') ? 'active' : '' }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -235,11 +226,10 @@
                         </svg>
                         <span>Master Rak</span>
                     </a>
-                    @endif
                 @endif
 
-                <!-- Admin Only User Management -->
-                @if(auth()->user()->role === 'admin_gudang')
+                <!-- Admin & Owner User Management -->
+                @if(auth()->user()->role === 'admin_gudang' || auth()->user()->role === 'owner')
                     <div class="nav-section-title" style="margin-top: 1.25rem;">Sistem</div>
 
                     <a href="{{ route('user.index') }}" class="sidebar-nav-link {{ request()->routeIs('user.*') ? 'active' : '' }}">
@@ -377,6 +367,113 @@
                 width: '100%',
             });
         });
+    </script>
+    <!-- Global Confirmation Modal -->
+    <div id="globalConfirmModalBackdrop" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.85); backdrop-filter:blur(6px); z-index:99999; align-items:center; justify-content:center;" onclick="closeCustomConfirm(false)">
+        <div style="background:rgba(30,41,59,0.9); border:1px solid rgba(255,255,255,0.08); border-radius:1.25rem; padding:2.25rem; width:100%; max-width:440px; margin:1rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); backdrop-filter:blur(16px);" onclick="event.stopPropagation()">
+            <h3 id="globalConfirmTitle" style="font-size:1.25rem; font-weight:700; color:var(--text-primary,#fff); margin-bottom:0.75rem;">Konfirmasi Tindakan</h3>
+            <p id="globalConfirmMessage" style="font-size:0.92rem; color:var(--text-secondary,rgba(255,255,255,0.7)); margin-bottom:2rem; line-height:1.6;"></p>
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button type="button" id="globalConfirmCancelBtn" class="btn btn-secondary" style="min-height: 40px; padding: 0.5rem 1.25rem; font-size: 0.85rem; border-radius: 0.5rem;">Batal</button>
+                <button type="button" id="globalConfirmSubmitBtn" class="btn btn-danger" style="min-height: 40px; padding: 0.5rem 1.25rem; font-size: 0.85rem; border-radius: 0.5rem; background: var(--accent-red,#ef4444); border: none;">Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script for custom confirm dialogs -->
+    <script>
+        let currentConfirmCallback = null;
+
+        function showCustomConfirm(message, callback) {
+            document.getElementById('globalConfirmMessage').textContent = message;
+            document.getElementById('globalConfirmModalBackdrop').style.display = 'flex';
+            currentConfirmCallback = callback;
+        }
+
+        function closeCustomConfirm(result) {
+            document.getElementById('globalConfirmModalBackdrop').style.display = 'none';
+            if (result && currentConfirmCallback) {
+                currentConfirmCallback();
+            }
+            currentConfirmCallback = null;
+        }
+
+        document.getElementById('globalConfirmCancelBtn').addEventListener('click', () => closeCustomConfirm(false));
+        document.getElementById('globalConfirmSubmitBtn').addEventListener('click', () => closeCustomConfirm(true));
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape") {
+                closeCustomConfirm(false);
+            }
+        });
+
+        // Intercept form submissions (onsubmit="return confirm(...)")
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            if (form.dataset.confirmed === 'true') {
+                return;
+            }
+
+            const onsubmitAttr = form.getAttribute('onsubmit');
+            if (onsubmitAttr && onsubmitAttr.includes('confirm(')) {
+                e.preventDefault();
+
+                let message = "Apakah Anda yakin?";
+                const match = onsubmitAttr.match(/confirm\(['"](.*?)['"]\)/);
+                if (match && match[1]) {
+                    message = match[1];
+                }
+
+                showCustomConfirm(message, function() {
+                    form.dataset.confirmed = 'true';
+                    const originalOnsubmit = form.getAttribute('onsubmit');
+                    form.removeAttribute('onsubmit');
+                    form.submit();
+                    setTimeout(() => {
+                        form.setAttribute('onsubmit', originalOnsubmit);
+                    }, 50);
+                });
+            }
+        });
+
+        // Intercept clicks (onclick="return confirm(...)")
+        document.addEventListener('click', function(e) {
+            const target = e.target.closest('[onclick]');
+            if (!target) return;
+
+            const onclickAttr = target.getAttribute('onclick');
+            if (onclickAttr && onclickAttr.includes('confirm(')) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                let message = "Apakah Anda yakin?";
+                const match = onclickAttr.match(/confirm\(['"](.*?)['"]\)/);
+                if (match && match[1]) {
+                    message = match[1];
+                }
+
+                showCustomConfirm(message, function() {
+                    const originalOnclick = target.getAttribute('onclick');
+                    target.removeAttribute('onclick');
+
+                    if (target.type === 'submit') {
+                        const form = target.closest('form');
+                        if (form) {
+                            form.dataset.confirmed = 'true';
+                            form.submit();
+                        } else {
+                            target.click();
+                        }
+                    } else {
+                        target.click();
+                    }
+
+                    setTimeout(() => {
+                        target.setAttribute('onclick', originalOnclick);
+                    }, 50);
+                });
+            }
+        }, true);
     </script>
 </body>
 </html>

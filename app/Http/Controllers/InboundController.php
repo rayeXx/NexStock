@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 class InboundController extends Controller
 {
     // List inbound transactions
-    public function index()
+    public function index(Request $request)
     {
         $inbounds = BatchInbound::with(['product', 'purchaseOrder', 'rack'])->orderBy('created_at', 'desc')->get();
         
@@ -25,6 +25,8 @@ class InboundController extends Controller
     // Show form to select PO or perform inbound
     public function create(Request $request)
     {
+        abort_if(auth()->user()->role !== 'staff_gudang', 403, 'Akses Ditolak: Hanya Staff Gudang yang diizinkan memproses penerimaan barang.');
+
         $po_id = $request->query('po_id');
         $selectedPo = null;
         $poDetails = [];
@@ -58,7 +60,7 @@ class InboundController extends Controller
 
     public function store(Request $request)
     {
-        abort_if(auth()->user()->role === 'admin_gudang', 403, 'Akses Ditolak: Admin tidak diizinkan memproses penerimaan barang.');
+        abort_if(auth()->user()->role !== 'staff_gudang', 403, 'Akses Ditolak: Hanya Staff Gudang yang diizinkan memproses penerimaan barang.');
 
         $po = PurchaseOrder::with('details.product')->findOrFail($request->po_id);
 
@@ -66,7 +68,7 @@ class InboundController extends Controller
             return redirect()->back()->with('error', 'Hanya PO berstatus Ordered atau Partially Received yang dapat diproses penerimaannya.');
         }
 
-        $request->validate([
+        $validationRules = [
             'items' => 'required|array',
             'items.*.produk_id' => 'required|exists:m_products,kode_produk',
             'items.*.qty_datang' => 'required|integer|min:0',
@@ -76,7 +78,15 @@ class InboundController extends Controller
             'items.*.batch_supplier' => 'nullable|string',
             'items.*.expired_date' => 'nullable|date',
             'items.*.rak_id' => 'nullable|exists:m_racks,kode_rak',
-        ]);
+        ];
+
+        if (auth()->user()->role === 'staff_gudang') {
+            $validationRules['foto_bukti'] = 'required|image|max:2048';
+        } else {
+            $validationRules['foto_bukti'] = 'nullable|image|max:2048';
+        }
+
+        $request->validate($validationRules);
 
         // Validasi Kelebihan Pengiriman / Over-receiving (Money Mastery)
         foreach ($request->items as $item) {
@@ -102,6 +112,11 @@ class InboundController extends Controller
             $hasAnyReceive = false;
             $now = Carbon::now();
 
+            $filePath = null;
+            if ($request->hasFile('foto_bukti')) {
+                $filePath = $request->file('foto_bukti')->store('inbound_receipts', 'public');
+            }
+
             foreach ($request->items as $item) {
                 $qtyDatang = (int)($item['qty_datang'] ?? 0);
                 if ($qtyDatang <= 0) continue;
@@ -124,12 +139,11 @@ class InboundController extends Controller
                     }
                 }
 
-                // Determine Kondisi Barang & Status Retur
+                // Determine Kondisi Barang & Status Retur (No return flow is initiated; treated as partial/short delivery)
                 $kondisiBarang = 'Baik';
                 $statusRetur = null;
                 
                 if ($qtyRusak > 0) {
-                    $statusRetur = 'Menunggu Retur';
                     if ($qtyDiterima > 0) {
                         $kondisiBarang = 'Rusak Sebagian';
                     } else {
@@ -196,6 +210,7 @@ class InboundController extends Controller
                     'batch_supplier' => $item['batch_supplier'] ?? null,
                     'expired_date' => $qtyDiterima > 0 ? $item['expired_date'] : null,
                     'rak_id' => $qtyDiterima > 0 ? $item['rak_id'] : null,
+                    'foto_bukti' => $filePath,
                     'status_retur' => $statusRetur,
                     'received_at' => $now,
                     'received_by' => auth()->id(),

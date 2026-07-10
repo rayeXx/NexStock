@@ -39,4 +39,9 @@ class DamagedReport extends Model
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
     }
+
+    public function destruction()
+    {
+        return $this->hasOne(Destruction::class, 'damaged_report_id', 'id');
+    }
 }

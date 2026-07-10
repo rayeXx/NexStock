@@ -39,6 +39,15 @@ class ProductController extends Controller
         return view('product.index', compact('products'));
     }
 
+    public function show($id)
+    {
+        $product = Product::with(['category', 'batchInbounds.rack'])
+            ->where('kode_produk', $id)
+            ->firstOrFail();
+
+        return view('product.show', compact('product'));
+    }
+
     public function create()
     {
         abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
@@ -83,6 +92,10 @@ class ProductController extends Controller
             'nama_produk' => $request->input('nama_produk'),
             'kategori_id' => $kategoriId,
             'harga_beli' => $request->input('harga_beli'),
+            'harga_jual' => 0,
+            'diskon_bawah_1_tahun' => 0,
+            'diskon_bawah_6_bulan' => 0,
+            'diskon_bawah_3_bulan' => 0,
             'stok_minimum' => $request->input('stok_minimum'),
             'uom' => $request->input('satuan_jual'),
             'satuan_beli' => $request->input('satuan_beli'),
@@ -95,7 +108,6 @@ class ProductController extends Controller
 
     public function edit($kode_produk)
     {
-        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
         $product = Product::findOrFail($kode_produk);
         $categories = Category::all();
         return view('product.edit', compact('product', 'categories'));
@@ -103,9 +115,28 @@ class ProductController extends Controller
 
     public function update(Request $request, $kode_produk)
     {
-        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data Master Produk.');
         $product = Product::findOrFail($kode_produk);
 
+        if (auth()->user()->role === 'owner') {
+            // Owner only updates selling price and discount templates
+            $request->validate([
+                'harga_jual' => 'required|numeric|min:0',
+                'diskon_bawah_1_tahun' => 'required|integer|between:0,100',
+                'diskon_bawah_6_bulan' => 'required|integer|between:0,100',
+                'diskon_bawah_3_bulan' => 'required|integer|between:0,100',
+            ]);
+
+            $product->update([
+                'harga_jual' => $request->input('harga_jual'),
+                'diskon_bawah_1_tahun' => $request->input('diskon_bawah_1_tahun'),
+                'diskon_bawah_6_bulan' => $request->input('diskon_bawah_6_bulan'),
+                'diskon_bawah_3_bulan' => $request->input('diskon_bawah_3_bulan'),
+            ]);
+
+            return redirect()->route('product.index')->with('success', 'Harga jual & diskon produk berhasil diperbarui oleh Owner.');
+        }
+
+        // Admin Gudang updates specifications (except harga_jual and discount templates)
         $rules = [
             'nama_produk' => 'required|string|max:255',
             'harga_beli' => 'required|numeric|min:0',
@@ -145,7 +176,7 @@ class ProductController extends Controller
             'rasio_konversi' => $request->input('rasio_konversi'),
         ]);
 
-        return redirect()->route('product.index')->with('success', 'Produk berhasil diperbarui.');
+        return redirect()->route('product.index')->with('success', 'Spesifikasi produk berhasil diperbarui.');
     }
 
     public function destroy($kode_produk)

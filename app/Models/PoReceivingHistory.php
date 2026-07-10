@@ -22,6 +22,7 @@ class PoReceivingHistory extends Model
         'batch_supplier',
         'expired_date',
         'rak_id',
+        'foto_bukti',
         'status_retur',
         'tanggal_retur',
         'catatan_retur',

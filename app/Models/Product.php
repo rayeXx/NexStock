@@ -18,6 +18,10 @@ class Product extends Model
         'nama_produk',
         'kategori_id',
         'harga_beli',
+        'harga_jual',
+        'diskon_bawah_1_tahun',
+        'diskon_bawah_6_bulan',
+        'diskon_bawah_3_bulan',
         'stok_minimum',
         'uom',
         'satuan_beli',
@@ -27,6 +31,10 @@ class Product extends Model
 
     protected $casts = [
         'harga_beli' => 'encrypted', // AES-256 encryption
+        'harga_jual' => 'integer',
+        'diskon_bawah_1_tahun' => 'integer',
+        'diskon_bawah_6_bulan' => 'integer',
+        'diskon_bawah_3_bulan' => 'integer',
         'stok_minimum' => 'integer',
         'rasio_konversi' => 'integer',
     ];

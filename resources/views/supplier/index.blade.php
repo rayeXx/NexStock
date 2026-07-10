@@ -4,9 +4,11 @@
             <h1>Master Data Supplier</h1>
             <p>Kelola daftar mitra pemasok/supplier barang dan informasi kontak resmi.</p>
         </div>
+        @if(auth()->user()->role !== 'owner')
         <a href="{{ route('supplier.create') }}" class="btn btn-primary">
             + Tambah Supplier Baru
         </a>
+        @endif
     </div>
 
     {{-- Search Bar --}}
@@ -59,6 +61,7 @@
                                     <a href="{{ route('supplier.show', $supplier->id) }}" class="btn btn-secondary" style="padding: 6px 12px; min-height:36px; font-size: 0.85rem; background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.3); color: var(--accent-blue);" title="Lihat KPI Performa Supplier">
                                         📊 KPI
                                     </a>
+                                    @if(auth()->user()->role !== 'owner')
                                     <a href="{{ route('supplier.edit', $supplier->id) }}" class="btn btn-secondary" style="padding: 6px 12px; min-height:36px; min-width:36px; font-size: 0.85rem;">
                                         Edit
                                     </a>
@@ -69,6 +72,7 @@
                                             Hapus
                                         </button>
                                     </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

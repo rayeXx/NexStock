@@ -35,91 +35,102 @@
     @if($userRole === 'owner')
     {{-- OWNER KPI: Nilai Aset + PO Stats --}}
     <div class="grid-3" style="margin-bottom: 1.5rem;">
-        <div class="glass-card metric-box">
+        <a href="{{ route('product.index') }}" class="glass-card metric-box clickable-card">
             <span class="metric-label">Kapitalisasi Nilai Aset</span>
             <span class="metric-value accent-blue">Rp {{ number_format($totalAsetValue, 0, ',', '.') }}</span>
             <p>Total nilai modal dari persediaan siap jual di gudang saat ini.</p>
-        </div>
-        <div class="glass-card metric-box">
-            <span class="metric-label">Kapasitas Gudang & Rak</span>
-            <span class="metric-value accent-green">{{ $stats['total_stok'] }} Unit</span>
-            <p>Terkapitalisasi di {{ $stats['total_rak'] }} lokasi rak pergudangan dinamis.</p>
-        </div>
-        <div class="glass-card metric-box">
-            <span class="metric-label">Karantina Barang Rusak</span>
-            <span class="metric-value" style="color: var(--accent-yellow);">{{ $stats['karantina_count'] }} Kasus</span>
-            <p>Total kasus pelaporan kerusakan atau kehilangan barang.</p>
-        </div>
+        </a>
+        <a href="{{ route('financial.index') }}" class="glass-card metric-box clickable-card">
+            <span class="metric-label">Total Pemasukan</span>
+            <span class="metric-value accent-green">Rp {{ number_format($stats['total_pemasukan'], 0, ',', '.') }}</span>
+            <p>Total omzet penjualan dari seluruh transaksi keluar terkonfirmasi.</p>
+        </a>
+        <a href="{{ route('damaged.index') }}" class="glass-card metric-box clickable-card">
+            <span class="metric-label">Total Kerugian Barang Rusak</span>
+            <span class="metric-value" style="color: var(--accent-red);">Rp {{ number_format($stats['total_kerugian'], 0, ',', '.') }}</span>
+            <p>Estimasi nilai kerugian dari seluruh barang rusak atau hilang.</p>
+        </a>
     </div>
     <div class="grid-3" style="margin-bottom: 1.5rem;">
-        <div class="glass-card metric-box">
+        <a href="{{ route('po.index', ['status' => 'Ordered']) }}" class="glass-card metric-box clickable-card">
             <span class="metric-label">PO Ordered</span>
             <span class="metric-value" style="color: #94a3b8;">{{ $poStats['ordered'] }}</span>
             <p>Telah dipesan ke Supplier.</p>
-        </div>
-        <div class="glass-card metric-box">
+        </a>
+        <a href="{{ route('po.index', ['status' => 'Partially Received']) }}" class="glass-card metric-box clickable-card">
             <span class="metric-label">PO Partially Received</span>
             <span class="metric-value" style="color: var(--accent-yellow);">{{ $poStats['partial'] }}</span>
             <p>Penerimaan barang belum lengkap.</p>
-        </div>
-        <div class="glass-card metric-box">
+        </a>
+        <a href="{{ route('po.index', ['status' => 'Completed']) }}" class="glass-card metric-box clickable-card">
             <span class="metric-label">PO Completed</span>
             <span class="metric-value accent-green">{{ $poStats['completed'] }}</span>
             <p>Seluruh barang telah diterima.</p>
-        </div>
+        </a>
     </div>
-    <div class="grid-3" style="margin-bottom: 1.5rem;">
-        <div class="glass-card metric-box">
-            <span class="metric-label">Barang Rusak (Hari Ini)</span>
-            <span class="metric-value" style="color: var(--accent-red);">{{ $poStats['damaged_today'] }} Unit</span>
-            <p>Unit ditolak dari PO hari ini.</p>
+    {{-- ── Damaged Items Chart Card ── --}}
+    <div class="glass-card" style="margin-bottom:1.5rem; padding:1.5rem;">
+        {{-- Chart Header --}}
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+            <div>
+                <h3 style="font-size:0.95rem; font-weight:700; color:#e2e8f0; margin:0 0 0.2rem;">Grafik Barang Rusak</h3>
+                <p style="font-size:0.78rem; color:#64748b; margin:0;">Total unit barang karantina (rusak, hilang, expired) yang telah disetujui Admin.</p>
+            </div>
+            {{-- Filter Buttons --}}
+            <div id="dmgChartFilterGroup" style="display:flex; gap:0.4rem; background:rgba(0,0,0,0.2); padding:0.3rem; border-radius:0.6rem; border:1px solid rgba(255,255,255,0.06); flex-wrap:wrap;">
+                <button type="button" onclick="switchDmgPeriod('today', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">Hari Ini</button>
+                <button type="button" onclick="switchDmgPeriod('week', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">1 Minggu</button>
+                <button type="button" onclick="switchDmgPeriod('thirty', this)" id="defaultDmgFilterBtn" class="chart-filter-btn chart-filter-active" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">1 Bulan</button>
+                <button type="button" onclick="switchDmgPeriod('three_months', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">3 Bulan</button>
+                <button type="button" onclick="switchDmgPeriod('six_months', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">6 Bulan</button>
+                <button type="button" onclick="switchDmgPeriod('year', this)" class="chart-filter-btn" style="padding:0.4rem 0.85rem; border-radius:0.4rem; font-size:0.78rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; background:transparent; color:#64748b;">1 Tahun</button>
+            </div>
         </div>
-        <div class="glass-card metric-box">
-            <span class="metric-label">Barang Rusak (Minggu Ini)</span>
-            <span class="metric-value" style="color: var(--accent-red);">{{ $poStats['damaged_week'] }} Unit</span>
-            <p>Unit ditolak dari PO minggu ini.</p>
+ 
+        {{-- Summary Stats Row --}}
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.5rem;">
+            <a id="dmgStatTotalLink" href="{{ route('damaged.index') }}" class="clickable-card" style="background:rgba(244,63,94,0.06); border:1px solid rgba(244,63,94,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center; text-decoration:none;">
+                <div id="dmgStatTotal" style="font-size:1.5rem; font-weight:800; color:var(--accent-red); line-height:1;">—</div>
+                <div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-transform:uppercase; letter-spacing:0.05em;">Total Unit Rusak</div>
+            </a>
+            <a id="dmgStatAvgLink" href="{{ route('damaged.index') }}" class="clickable-card" style="background:rgba(244,63,94,0.06); border:1px solid rgba(244,63,94,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center; text-decoration:none;">
+                <div id="dmgStatAvg" style="font-size:1.5rem; font-weight:800; color:var(--accent-red); line-height:1;">—</div>
+                <div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-transform:uppercase; letter-spacing:0.05em;">Rata-rata / Periode</div>
+            </a>
+            <a id="dmgStatPeakLink" href="{{ route('damaged.index') }}" class="clickable-card" style="background:rgba(244,63,94,0.06); border:1px solid rgba(244,63,94,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center; text-decoration:none;">
+                <div id="dmgStatPeak" style="font-size:1.5rem; font-weight:800; color:var(--accent-red); line-height:1;">—</div>
+                <div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-transform:uppercase; letter-spacing:0.05em;">Kerusakan Tertinggi</div>
+            </a>
         </div>
-        <div class="glass-card metric-box">
-            <span class="metric-label">Barang Rusak (Bulan Ini)</span>
-            <span class="metric-value" style="color: var(--accent-red);">{{ $poStats['damaged_month'] }} Unit</span>
-            <p>Unit ditolak dari PO bulan ini.</p>
-        </div>
-    </div>
-    <div class="grid-2" style="margin-bottom: 1.5rem;">
-        <div class="glass-card metric-box">
-            <span class="metric-label">Menunggu Retur</span>
-            <span class="metric-value" style="color: var(--accent-yellow);">{{ $poStats['menunggu_retur'] }} Kasus</span>
-            <p>Penerimaan barang rusak yang belum diretur.</p>
-        </div>
-        <div class="glass-card metric-box">
-            <span class="metric-label">Selesai Diretur</span>
-            <span class="metric-value accent-green">{{ $poStats['sudah_diretur'] }} Kasus</span>
-            <p>Penerimaan barang rusak yang sudah diretur.</p>
+
+        {{-- Canvas Container --}}
+        <div style="height:300px; width:100%; position:relative; margin-bottom:0.5rem;">
+            <canvas id="damagedChart"></canvas>
         </div>
     </div>
     @else
     {{-- ADMIN / STAFF KPI: Operational Stats --}}
     <div class="grid-4" style="margin-bottom: 1.5rem;">
-        <div class="glass-card metric-box">
+        <a href="{{ route('product.index') }}" class="glass-card metric-box clickable-card" style="text-decoration: none; color: inherit;">
             <span class="metric-label">Total Produk</span>
             <span class="metric-value accent-blue">{{ $stats['total_produk'] }}</span>
             <p>Jumlah SKU terdaftar di master produk.</p>
-        </div>
-        <div class="glass-card metric-box">
-            <span class="metric-label">Barang Hampir Habis</span>
-            <span class="metric-value" style="color: var(--accent-red);">{{ $stats['barang_hampir_habis'] }}</span>
-            <p>Produk dengan stok mendekati batas minimum.</p>
-        </div>
-        <div class="glass-card metric-box">
+        </a>
+        <a href="{{ route('damaged.index', ['period' => 'today']) }}" class="glass-card metric-box clickable-card" style="text-decoration: none; color: inherit;">
+            <span class="metric-label">Barang Rusak Hari Ini</span>
+            <span class="metric-value" style="color: var(--accent-red);">{{ $stats['karantina_hari_ini'] }} Kasus</span>
+            <p>Jumlah kasus pelaporan barang rusak hari ini.</p>
+        </a>
+        <a href="{{ route('inbound.index', ['filter' => 'today']) }}" class="glass-card metric-box clickable-card" style="text-decoration: none; color: inherit;">
             <span class="metric-label">Barang Masuk Hari Ini</span>
             <span class="metric-value accent-green">{{ $stats['inbound_hari_ini'] }} Unit</span>
             <p>Total unit diterima hari ini.</p>
-        </div>
-        <div class="glass-card metric-box">
+        </a>
+        <a href="{{ route('outbound.index', ['filter' => 'today']) }}" class="glass-card metric-box clickable-card" style="text-decoration: none; color: inherit;">
             <span class="metric-label">Barang Keluar Hari Ini</span>
             <span class="metric-value" style="color: var(--accent-yellow);">{{ $stats['outbound_hari_ini'] }} Unit</span>
             <p>Total unit dikeluarkan hari ini.</p>
-        </div>
+        </a>
     </div>
     @endif
 
@@ -165,18 +176,18 @@
 
             {{-- Summary Stats Row --}}
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.5rem;">
-                <div style="background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center;">
+                <a id="salesStatTotalLink" href="{{ route('outbound.index') }}" class="clickable-card" style="background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center; text-decoration:none;">
                     <div id="statTotal" style="font-size:1.5rem; font-weight:800; color:#38bdf8; line-height:1;">—</div>
                     <div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-transform:uppercase; letter-spacing:0.05em;">Total Unit Terjual</div>
-                </div>
-                <div style="background:rgba(129,140,248,0.06); border:1px solid rgba(129,140,248,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center;">
+                </a>
+                <a id="salesStatAvgLink" href="{{ route('outbound.index') }}" class="clickable-card" style="background:rgba(129,140,248,0.06); border:1px solid rgba(129,140,248,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center; text-decoration:none;">
                     <div id="statAvg" style="font-size:1.5rem; font-weight:800; color:#818cf8; line-height:1;">—</div>
                     <div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-transform:uppercase; letter-spacing:0.05em;">Rata-rata / Periode</div>
-                </div>
-                <div style="background:rgba(52,211,153,0.06); border:1px solid rgba(52,211,153,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center;">
+                </a>
+                <a id="salesStatPeakLink" href="{{ route('outbound.index') }}" class="clickable-card" style="background:rgba(52,211,153,0.06); border:1px solid rgba(52,211,153,0.12); border-radius:0.75rem; padding:1rem 1.25rem; text-align:center; text-decoration:none;">
                     <div id="statPeak" style="font-size:1.5rem; font-weight:800; color:#34d399; line-height:1;">—</div>
                     <div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem; text-transform:uppercase; letter-spacing:0.05em;">Penjualan Tertinggi</div>
-                </div>
+                </a>
             </div>
 
             {{-- Chart Canvas --}}
@@ -188,7 +199,7 @@
         {{-- ── Top Products Row ── --}}
         <div class="top-products-grid">
 
-            {{-- Top 5 Terlaris --}}
+            {{-- Top 5 Fast Moving --}}
             <div class="glass-card" style="padding:1.5rem;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
                     <div style="display:flex; align-items:center; gap:0.6rem;">
@@ -196,28 +207,34 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                         </div>
                         <div>
-                            <h3 style="font-size:0.88rem; font-weight:700; color:#e2e8f0; margin:0;">Top 5 Terlaris</h3>
-                            <p style="font-size:0.72rem; color:#64748b; margin:0;">30 hari terakhir</p>
+                            <h3 style="font-size:0.88rem; font-weight:700; color:#e2e8f0; margin:0;">Top 5 Fast Moving</h3>
+                            <p style="font-size:0.72rem; color:#64748b; margin:0;">Perputaran stok tercepat (30 hari terakhir)</p>
                         </div>
                     </div>
-                    <span class="badge badge-green" style="font-size:0.68rem;">Best Seller</span>
+                    <span class="badge badge-green" style="font-size:0.68rem;">Fast Moving</span>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:0.85rem;">
                     @forelse($topSellingProducts as $index => $product)
-                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <a href="{{ route('product.show', $product['kode']) }}" class="list-item-clickable" style="display:flex; align-items:center; gap:0.75rem; text-decoration:none;">
                         <span style="width:20px; text-align:center; font-size:0.75rem; font-weight:800; color:{{ $index === 0 ? '#fbbf24' : ($index === 1 ? '#94a3b8' : ($index === 2 ? '#b45309' : '#475569')) }}; flex-shrink:0;">
                             {{ $index === 0 ? '🥇' : ($index === 1 ? '🥈' : ($index === 2 ? '🥉' : '#'.($index+1))) }}
                         </span>
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span style="font-size:0.8rem; font-weight:600; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%;">{{ $product['nama'] }}</span>
-                                <span style="font-size:0.78rem; font-weight:700; color:#34d399; flex-shrink:0; margin-left:0.5rem;">{{ number_format($product['total_sold']) }} unit</span>
+                                <span style="font-size:0.8rem; font-weight:600; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%;">{{ $product['nama'] }}</span>
+                                <div style="display:flex; gap:0.4rem; align-items:center; flex-shrink:0; margin-left:0.5rem;">
+                                    <span style="font-size:0.68rem; color:#a3e635; background:rgba(163,230,53,0.1); padding:0.1rem 0.4rem; border-radius:1rem; border:1px solid rgba(163,230,53,0.2);">{{ $product['avg_days'] }} Hari</span>
+                                    <span style="font-size:0.78rem; font-weight:700; color:#34d399;">{{ number_format($product['total_sold']) }} unit</span>
+                                </div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; font-size:0.65rem; color:#64748b;">
+                                <span>Barang Masuk (30 hr): {{ number_format($product['total_received']) }} unit</span>
                             </div>
                             <div style="height:5px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
                                 <div style="height:100%; width:{{ $product['percentage'] }}%; background:linear-gradient(90deg,#34d399,#059669); border-radius:3px; transition:width 0.8s ease;"></div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                     @empty
                     <div style="text-align:center; padding:1.5rem 0; color:#475569;">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.6rem; display:block; opacity:0.4;"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
@@ -237,28 +254,30 @@
                         </div>
                         <div>
                             <h3 style="font-size:0.88rem; font-weight:700; color:#e2e8f0; margin:0;">Top 5 Slow Moving</h3>
-                            <p style="font-size:0.72rem; color:#64748b; margin:0;">Penjualan terendah · stok masih ada</p>
+                            <p style="font-size:0.72rem; color:#64748b; margin:0;">Perputaran stok terlama / mengendap di gudang</p>
                         </div>
                     </div>
-                    <span class="badge badge-yellow" style="font-size:0.68rem;">Perhatian</span>
+                    <span class="badge badge-yellow" style="font-size:0.68rem;">Slow Moving</span>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:0.85rem;">
                     @forelse($slowMovingProducts as $index => $product)
-                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <a href="{{ route('product.show', $product['kode']) }}" class="list-item-clickable" style="display:flex; align-items:center; gap:0.75rem; text-decoration:none;">
                         <span style="width:20px; text-align:center; font-size:0.75rem; font-weight:700; color:#475569; flex-shrink:0;">#{{ $index + 1 }}</span>
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                                <span style="font-size:0.8rem; font-weight:600; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%;">{{ $product['nama'] }}</span>
-                                <div style="display:flex; gap:0.5rem; align-items:center; flex-shrink:0; margin-left:0.5rem;">
-                                    <span style="font-size:0.68rem; color:#64748b;">{{ number_format($product['total_sold']) }} terjual</span>
-                                    <span style="font-size:0.68rem; background:rgba(251,191,36,0.1); color:#fbbf24; padding:0.1rem 0.4rem; border-radius:1rem; border:1px solid rgba(251,191,36,0.2);">Stok: {{ number_format($product['stok_sisa']) }}</span>
+                                <span style="font-size:0.8rem; font-weight:600; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55%;">{{ $product['nama'] }}</span>
+                                <div style="display:flex; gap:0.4rem; align-items:center; flex-shrink:0; margin-left:0.5rem;">
+                                    <span style="font-size:0.68rem; color:#fbbf24; background:rgba(251,191,36,0.1); padding:0.1rem 0.4rem; border-radius:1rem; border:1px solid rgba(251,191,36,0.2);">{{ $product['status_label'] }}</span>
                                 </div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; font-size:0.65rem; color:#64748b;">
+                                <span>Stok Sisa: {{ number_format($product['stok_sisa']) }} | Terjual (30 hr): {{ number_format($product['total_sold']) }}</span>
                             </div>
                             <div style="height:5px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
                                 <div style="height:100%; width:{{ max($product['percentage'], 3) }}%; background:linear-gradient(90deg,#f59e0b,#d97706); border-radius:3px;"></div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                     @empty
                     <div style="text-align:center; padding:1.5rem 0; color:#475569;">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.6rem; display:block; opacity:0.4;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -312,6 +331,28 @@
     </div>
 
     <style>
+        .clickable-card {
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .clickable-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(56, 189, 248, 0.45) !important;
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.12);
+        }
+        .list-item-clickable {
+            transition: all 0.2s ease;
+            border-radius: 0.5rem;
+            padding: 0.4rem;
+            margin: -0.4rem;
+        }
+        .list-item-clickable:hover {
+            background: rgba(255, 255, 255, 0.04);
+            transform: translateX(4px);
+        }
         .chart-filter-active {
             background: rgba(56,189,248,0.15) !important;
             color: #38bdf8 !important;
@@ -334,14 +375,32 @@
         document.addEventListener('DOMContentLoaded', function () {
             const ctx = document.getElementById('salesChart').getContext('2d');
 
+            let currentSalesPeriod = 'thirty';
+
             const chartDataSets = {
-                today:  { labels: {!! json_encode($chartTodayLabels) !!},  data: {!! json_encode($chartTodayData) !!} },
-                week:   { labels: {!! json_encode($chartWeekLabels) !!},   data: {!! json_encode($chartWeekData) !!} },
-                thirty: { labels: {!! json_encode($chartThirtyLabels) !!}, data: {!! json_encode($chartThirtyData) !!} },
-                three_months: { labels: {!! json_encode($chartThreeMonthsLabels) !!}, data: {!! json_encode($chartThreeMonthsData) !!} },
-                six_months:   { labels: {!! json_encode($chartSixMonthsLabels) !!},   data: {!! json_encode($chartSixMonthsData) !!} },
-                year:         { labels: {!! json_encode($chartYearLabels) !!},        data: {!! json_encode($chartYearData) !!} },
+                today:  { labels: {!! json_encode($chartTodayLabels) !!},  data: {!! json_encode($chartTodayData) !!}, dates: {!! json_encode($chartTodayDates) !!} },
+                week:   { labels: {!! json_encode($chartWeekLabels) !!},   data: {!! json_encode($chartWeekData) !!},   dates: {!! json_encode($chartWeekDates) !!} },
+                thirty: { labels: {!! json_encode($chartThirtyLabels) !!}, data: {!! json_encode($chartThirtyData) !!}, dates: {!! json_encode($chartThirtyDates) !!} },
+                three_months: { labels: {!! json_encode($chartThreeMonthsLabels) !!}, data: {!! json_encode($chartThreeMonthsData) !!}, dates: {!! json_encode($chartThreeMonthsDates) !!} },
+                six_months:   { labels: {!! json_encode($chartSixMonthsLabels) !!},   data: {!! json_encode($chartSixMonthsData) !!},   dates: {!! json_encode($chartSixMonthsDates) !!} },
+                year:         { labels: {!! json_encode($chartYearLabels) !!},        data: {!! json_encode($chartYearData) !!},        dates: {!! json_encode($chartYearDates) !!} },
             };
+
+            function getFilterParam(period) {
+                if (period === 'today') return 'today';
+                if (period === 'week') return 'week';
+                if (period === 'thirty') return 'month';
+                if (period === 'year') return 'year';
+                return 'all';
+            }
+
+            function updateSalesCardLinks(period) {
+                const param = getFilterParam(period);
+                const url = `/outbound?filter=${param}`;
+                document.getElementById('salesStatTotalLink').href = url;
+                document.getElementById('salesStatAvgLink').href = url;
+                document.getElementById('salesStatPeakLink').href = url;
+            }
 
             function makeGradient(colorStart, colorEnd) {
                 const g = ctx.createLinearGradient(0, 0, 0, 300);
@@ -360,27 +419,55 @@
             }
 
             const initData = chartDataSets.thirty;
+            updateSalesCardLinks('thirty');
 
             let salesChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: initData.labels,
-                    datasets: [{
-                        label: 'Qty Terjual',
-                        data: initData.data,
-                        backgroundColor: 'rgba(56, 189, 248, 0.22)',
-                        borderColor: '#38bdf8',
-                        borderWidth: 1.5,
-                        borderRadius: 6,
-                        borderSkipped: false,
-                        hoverBackgroundColor: 'rgba(56, 189, 248, 0.65)',
-                        hoverBorderColor: '#38bdf8',
-                        hoverBorderWidth: 1.5,
-                    }]
+                    datasets: [
+                        {
+                            label: 'Qty Terjual',
+                            type: 'bar',
+                            data: initData.data,
+                            backgroundColor: 'rgba(56, 189, 248, 0.22)',
+                            borderColor: '#38bdf8',
+                            borderWidth: 1.5,
+                            borderRadius: 6,
+                            borderSkipped: false,
+                            hoverBackgroundColor: 'rgba(56, 189, 248, 0.65)',
+                            hoverBorderColor: '#38bdf8',
+                            hoverBorderWidth: 1.5,
+                            order: 2
+                        },
+                        {
+                            label: 'Tren Penjualan',
+                            type: 'line',
+                            data: initData.data,
+                            borderColor: '#38bdf8',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointBackgroundColor: '#38bdf8',
+                            pointHoverRadius: 6,
+                            order: 1
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: (e, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const elementIndex = activeElements[0].index;
+                            const activeDataset = chartDataSets[currentSalesPeriod];
+                            const dateVal = activeDataset.dates[elementIndex];
+                            window.location.href = `/outbound?date=${encodeURIComponent(dateVal)}`;
+                        }
+                    },
+                    onHover: (e, activeElements) => {
+                        e.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
+                    },
                     interaction: { intersect: false, mode: 'index' },
                     animation: { duration: 500, easing: 'easeInOutQuart' },
                     plugins: {
@@ -426,6 +513,7 @@
             updateStats(initData.data);
 
             window.switchPeriod = function(period, btn) {
+                currentSalesPeriod = period;
                 // Update active button styling by toggling the class
                 document.querySelectorAll('#chartFilterGroup .chart-filter-btn').forEach(b => {
                     b.classList.remove('chart-filter-active');
@@ -435,8 +523,161 @@
                 const dataset = chartDataSets[period];
                 salesChart.data.labels = dataset.labels;
                 salesChart.data.datasets[0].data = dataset.data;
+                salesChart.data.datasets[1].data = dataset.data;
                 salesChart.update();
                 updateStats(dataset.data);
+                updateSalesCardLinks(period);
+            };
+
+            // --- Damaged Chart Config ---
+            const dmgCtx = document.getElementById('damagedChart').getContext('2d');
+ 
+            let currentDmgPeriod = 'thirty';
+
+            const dmgChartDataSets = {
+                today:        { labels: {!! json_encode($chartDmgTodayLabels) !!},        data: {!! json_encode($chartDmgTodayData) !!}, dates: {!! json_encode($chartDmgTodayDates) !!} },
+                week:         { labels: {!! json_encode($chartDmgWeekLabels) !!},         data: {!! json_encode($chartDmgWeekData) !!},   dates: {!! json_encode($chartDmgWeekDates) !!} },
+                thirty:       { labels: {!! json_encode($chartDmgThirtyLabels) !!},       data: {!! json_encode($chartDmgThirtyData) !!}, dates: {!! json_encode($chartDmgThirtyDates) !!} },
+                three_months: { labels: {!! json_encode($chartDmgThreeMonthsLabels) !!},  data: {!! json_encode($chartDmgThreeMonthsData) !!}, dates: {!! json_encode($chartDmgThreeMonthsDates) !!} },
+                six_months:   { labels: {!! json_encode($chartDmgSixMonthsLabels) !!},    data: {!! json_encode($chartDmgSixMonthsData) !!},   dates: {!! json_encode($chartDmgSixMonthsDates) !!} },
+                year:         { labels: {!! json_encode($chartDmgYearLabels) !!},         data: {!! json_encode($chartDmgYearData) !!},        dates: {!! json_encode($chartDmgYearDates) !!} },
+            };
+ 
+            const initDmgData = dmgChartDataSets.thirty;
+
+            function getDmgFilterParam(period) {
+                if (period === 'today') return 'today';
+                if (period === 'week') return 'week';
+                if (period === 'thirty') return 'month';
+                if (period === 'year') return 'year';
+                return 'all';
+            }
+
+            function updateDmgCardLinks(period) {
+                const param = getDmgFilterParam(period);
+                const url = `/damaged?period=${param}`;
+                document.getElementById('dmgStatTotalLink').href = url;
+                document.getElementById('dmgStatAvgLink').href = url;
+                document.getElementById('dmgStatPeakLink').href = url;
+            }
+
+            function updateDmgStats(data) {
+                const total = data.reduce((a, b) => a + b, 0);
+                const avg   = data.length ? Math.round(total / data.length) : 0;
+                const peak  = data.length ? Math.max(...data) : 0;
+                document.getElementById('dmgStatTotal').textContent = total.toLocaleString('id-ID') + ' Unit';
+                document.getElementById('dmgStatAvg').textContent   = avg.toLocaleString('id-ID') + ' Unit';
+                document.getElementById('dmgStatPeak').textContent  = peak.toLocaleString('id-ID') + ' Unit';
+            }
+
+            // Initialize stats
+            updateDmgStats(initDmgData.data);
+            updateDmgCardLinks('thirty');
+ 
+            let damagedChart = new Chart(dmgCtx, {
+                type: 'bar',
+                data: {
+                    labels: initDmgData.labels,
+                    datasets: [
+                        {
+                            label: 'Qty Rusak',
+                            type: 'bar',
+                            data: initDmgData.data,
+                            backgroundColor: 'rgba(239, 68, 68, 0.22)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1.5,
+                            borderRadius: 6,
+                            borderSkipped: false,
+                            hoverBackgroundColor: 'rgba(239, 68, 68, 0.65)',
+                            hoverBorderColor: '#ef4444',
+                            hoverBorderWidth: 1.5,
+                            order: 2
+                        },
+                        {
+                            label: 'Tren Kerusakan',
+                            type: 'line',
+                            data: initDmgData.data,
+                            borderColor: '#ef4444',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointBackgroundColor: '#ef4444',
+                            pointHoverRadius: 6,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (e, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const elementIndex = activeElements[0].index;
+                            const activeDataset = dmgChartDataSets[currentDmgPeriod];
+                            const dateVal = activeDataset.dates[elementIndex];
+                            window.location.href = `/damaged?date=${encodeURIComponent(dateVal)}`;
+                        }
+                    },
+                    onHover: (e, activeElements) => {
+                        e.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
+                    },
+                    interaction: { intersect: false, mode: 'index' },
+                    animation: { duration: 500, easing: 'easeInOutQuart' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,23,42,0.95)',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#94a3b8',
+                            borderColor: 'rgba(239, 68, 68, 0.35)',
+                            borderWidth: 1,
+                            cornerRadius: 10,
+                            padding: 14,
+                            displayColors: false,
+                            callbacks: {
+                                title: function(items) { return '📅 ' + items[0].label; },
+                                label: function(item) {
+                                    return ' ' + item.parsed.y.toLocaleString('id-ID') + ' unit rusak';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,
+                                color: '#475569',
+                                font: { family: 'Outfit', size: 11 },
+                                callback: v => v.toLocaleString('id-ID')
+                            },
+                            grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+                            border: { dash: [4, 4] }
+                        },
+                        x: {
+                            ticks: { color: '#475569', font: { family: 'Outfit', size: 10 }, maxRotation: 45, minRotation: 0 },
+                            grid: { display: false },
+                            border: { display: false }
+                        }
+                    }
+                }
+            });
+ 
+            window.switchDmgPeriod = function(period, btn) {
+                currentDmgPeriod = period;
+                // Update active button styling by toggling the class
+                document.querySelectorAll('#dmgChartFilterGroup .chart-filter-btn').forEach(b => {
+                    b.classList.remove('chart-filter-active');
+                });
+                btn.classList.add('chart-filter-active');
+ 
+                const dataset = dmgChartDataSets[period];
+                damagedChart.data.labels = dataset.labels;
+                damagedChart.data.datasets[0].data = dataset.data;
+                damagedChart.data.datasets[1].data = dataset.data;
+                damagedChart.update();
+                updateDmgStats(dataset.data);
+                updateDmgCardLinks(period);
             };
         });
     </script>
@@ -448,7 +689,7 @@
         <!-- Restock Forecast Chart/Table -->
         <div class="glass-card">
             <div class="card-title" style="flex-wrap:wrap; gap:0.75rem;">
-                <span>Smart Restock Forecast (30 Hari)</span>
+                <span>Prediksi Restok Pintar (30 Hari)</span>
                 <span class="badge badge-blue">Otomatis</span>
             </div>
             <p style="margin-bottom: 1rem;">Prediksi kebutuhan order restock berdasarkan rata-rata volume pengeluaran harian dan parameter Lead Time (3 Hari).</p>
@@ -498,7 +739,7 @@
                                 <td>
                                     @if($forecast['status'] === 'Aman')
                                         <span class="badge badge-green">Aman</span>
-                                    @elseif(str_contains($forecast['status'], 'Peringatan'))
+                                    @elseif($forecast['status'] === 'Peringatan')
                                         <span class="badge badge-yellow">Reorder</span>
                                     @else
                                         <span class="badge badge-red">Kritis</span>
@@ -576,7 +817,7 @@
         <div class="glass-card">
             <div class="card-title">
                 <span>Deteksi Risiko Kedaluwarsa (Expired Risk)</span>
-                <span class="badge badge-red pulse-indicator">Kritis</span>
+                <span class="badge badge-yellow">Mendekati</span>
             </div>
             <p style="margin-bottom: 1rem;">Pemantauan batch produksi yang mendekati tanggal batas kedaluwarsa demi kelancaran pengeluaran barang (FEFO).</p>
             <div class="table-responsive">
@@ -598,17 +839,9 @@
                                 <td>{{ $batch['nama_produk'] }} (Rak {{ $batch['rak'] }})</td>
                                 <td>{{ $batch['stok_sisa'] }}</td>
                                 <td>{{ $batch['expired_date'] }}</td>
+                                <td>{{ $batch['days_remaining'] }} Hari lagi</td>
                                 <td>
-                                    @if($batch['days_remaining'] <= 0)
-                                        <span style="color:var(--accent-red); font-weight:bold;">Selesai ({{ $batch['days_remaining'] }} hari)</span>
-                                    @else
-                                        {{ $batch['days_remaining'] }} Hari lagi
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($batch['status'] === 'Kedaluwarsa')
-                                        <span class="badge badge-red">Expired</span>
-                                    @elseif($batch['status'] === 'Risiko Tinggi (< 30 Hari)')
+                                    @if($batch['status'] === 'Risiko Tinggi (< 30 Hari)')
                                         <span class="badge badge-red">Tinggi</span>
                                     @else
                                         <span class="badge badge-yellow">Sedang</span>
@@ -618,6 +851,47 @@
                         @empty
                             <tr>
                                 <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Tidak ada produk aktif yang mendekati masa kedaluwarsa.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Already Expired Items -->
+        <div class="glass-card">
+            <div class="card-title">
+                <span>Daftar Produk Kadaluwarsa (Already Expired)</span>
+                <span class="badge badge-red pulse-indicator" style="background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border-color: rgba(239, 68, 68, 0.4);">Kritis</span>
+            </div>
+            <p style="margin-bottom: 1rem;">Daftar batch produk yang telah melewati tanggal batas kedaluwarsa dan harus segera ditarik/dikarantina.</p>
+            <div class="table-responsive">
+                <table class="table-premium">
+                    <thead>
+                        <tr>
+                            <th>Batch</th>
+                            <th>Produk</th>
+                            <th>Sisa Stok</th>
+                            <th>Tgl Kedaluwarsa</th>
+                            <th>Hari Terlewat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($alreadyExpiredBatches as $batch)
+                            <tr>
+                                <td><code>{{ $batch['batch_number'] }}</code></td>
+                                <td>{{ $batch['nama_produk'] }} (Rak {{ $batch['rak'] }})</td>
+                                <td><strong style="color: var(--accent-red);">{{ $batch['stok_sisa'] }}</strong></td>
+                                <td>{{ $batch['expired_date'] }}</td>
+                                <td>
+                                    <span style="color: var(--accent-red); font-weight: bold;">
+                                        Lewat {{ abs($batch['days_remaining']) }} Hari
+                                    </span>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Tidak ada produk kedaluwarsa di dalam gudang.</td>
                             </tr>
                         @endforelse
                     </tbody>

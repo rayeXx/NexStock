@@ -1,4 +1,12 @@
 <x-guest-layout>
+    <a href="{{ url('/') }}" style="position: absolute; top: 1.5rem; left: 1.5rem; display: flex; align-items: center; gap: 0.35rem; color: #94a3b8; text-decoration: none; font-size: 0.8rem; font-weight: 600; transition: color 0.2s ease; z-index: 20;" onmouseover="this.style.color='#38bdf8';" onmouseout="this.style.color='#94a3b8';">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Kembali
+    </a>
+
     <style>
         .input-group {
             position: relative;

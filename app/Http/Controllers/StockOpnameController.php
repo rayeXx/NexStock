@@ -12,9 +12,13 @@ use Illuminate\Support\Facades\DB;
 class StockOpnameController extends Controller
 {
     // List opname history
-    public function index()
+    public function index(Request $request)
     {
-        $opnames = StockOpname::with(['details.product', 'creator'])->orderBy('created_at', 'desc')->get();
+        $query = StockOpname::with(['details.product', 'creator'])->orderBy('created_at', 'desc');
+        if ($request->filled('date')) {
+            $query->whereDate('tanggal_opname', $request->date);
+        }
+        $opnames = $query->get();
         return view('opname.index', compact('opnames'));
     }
 
@@ -28,6 +32,8 @@ class StockOpnameController extends Controller
     // Show create form
     public function create()
     {
+        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data stock opname.');
+
         // Get all active batches with non-zero stock
         $batches = BatchInbound::with('product')
             ->where('stok_sisa_batch', '>', 0)
@@ -38,6 +44,8 @@ class StockOpnameController extends Controller
     // Store opname results (Pending Approval)
     public function store(Request $request)
     {
+        abort_if(auth()->user()->role === 'owner', 403, 'Akses Ditolak: Owner hanya dapat melihat data stock opname.');
+
         $request->validate([
             'items' => 'required|array',
             'items.*.batch_number' => 'required|exists:t_batch_inbounds,batch_number',

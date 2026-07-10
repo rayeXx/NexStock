@@ -21,6 +21,10 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        abort_if(auth()->user()->role === 'staff_gudang', 403, 'Akses Ditolak: Staff tidak diizinkan mengakses dashboard.');
+
+        \App\Http\Controllers\DamagedReportController::autoIsolateExpired();
+
         $today = Carbon::today();
         $thirtyDaysAgo = Carbon::today()->subDays(30);
 
@@ -83,9 +87,9 @@ class DashboardController extends Controller
 
             $status = 'Aman';
             if ($currentStock <= $product->stok_minimum) {
-                $status = 'Kritis (Di bawah Stok Minimum)';
+                $status = 'Kritis';
             } elseif ($currentStock <= $rop) {
-                $status = 'Peringatan (Mendekati Reorder Point)';
+                $status = 'Peringatan';
             }
 
             $estDays = $dailyDemand > 0 ? round($currentStock / $dailyDemand) : 999;
@@ -103,9 +107,9 @@ class DashboardController extends Controller
         }
 
 
-        // 4. Smart Feature: Expired Risk Detection
-        // Find batches with remaining stock that expire soon
-        $expiredBatches = BatchInbound::with('product')
+        // 4. Smart Feature: Expired Risk Detection & Already Expired Detection
+        // Find batches with remaining stock that expire soon or are already expired
+        $activeBatches = BatchInbound::with('product')
             ->where('stok_sisa_batch', '>', 0)
             ->get()
             ->map(function($batch) use ($today) {
@@ -125,16 +129,51 @@ class DashboardController extends Controller
                     'nama_produk' => $batch->product->nama_produk,
                     'rak' => $batch->rak_id,
                     'stok_sisa' => $batch->stok_sisa_batch,
-                    'expired_date' => $batch->expired_date->format('d M Y'),
+                    'expired_date' => $batch->expired_date,
                     'days_remaining' => $daysToExpiry,
                     'status' => $status,
                 ];
-            })
+            });
+
+        // Add batches that are already isolated but not yet confirmed by staff
+        $pendingExpiredReports = DamagedReport::with(['product', 'batchInbound'])
+            ->where('status', 'Expired Pending Check')
+            ->get()
+            ->map(function($report) use ($today) {
+                $expDate = $report->batchInbound ? $report->batchInbound->expired_date : Carbon::yesterday();
+                $daysToExpiry = $today->diffInDays($expDate, false);
+
+                return [
+                    'batch_number' => $report->batch_number,
+                    'nama_produk' => $report->product->nama_produk,
+                    'rak' => $report->rak_id,
+                    'stok_sisa' => $report->qty_rusak, // original qty before isolation
+                    'expired_date' => $expDate,
+                    'days_remaining' => $daysToExpiry,
+                    'status' => 'Kedaluwarsa', // since it's already isolated, it must be expired
+                ];
+            });
+
+        // Merge active batches and pending expired checks
+        $allExpiryStatusBatches = $activeBatches->concat($pendingExpiredReports)
             ->filter(function($item) {
                 return $item['status'] !== 'Aman';
             })
-            ->sortBy('days_remaining')
-            ->values();
+            ->map(function($item) {
+                // Format expired_date to string for output
+                $item['expired_date'] = $item['expired_date'] instanceof Carbon ? $item['expired_date']->format('d M Y') : Carbon::parse($item['expired_date'])->format('d M Y');
+                return $item;
+            });
+
+        // Filter 1: Hanya yang mendekati tanggal expired (days_remaining > 0)
+        $expiredBatches = $allExpiryStatusBatches->filter(function($item) {
+            return $item['days_remaining'] > 0;
+        })->sortBy('days_remaining')->values();
+
+        // Filter 2: Yang sudah expired (days_remaining <= 0)
+        $alreadyExpiredBatches = $allExpiryStatusBatches->filter(function($item) {
+            return $item['days_remaining'] <= 0;
+        })->sortBy('days_remaining')->values();
 
 
         // 5. Smart Feature: Error/Discrepancy Detection
@@ -166,13 +205,29 @@ class DashboardController extends Controller
             $errorsDetected[] = "Audit Selisih: Ditemukan selisih kurang sebanyak " . abs($detail->selisih) . " unit pada produk {$detail->product->nama_produk} (Batch {$detail->batch_number}) dalam audit minggu ini.";
         }
 
+        // Calculate total loss in Rupiah from damaged reports (excluding rejected ones)
+        $totalLoss = 0;
+        $damagedReports = DamagedReport::where('status', '!=', 'Rejected')->with('product')->get();
+        foreach ($damagedReports as $report) {
+            if ($report->product) {
+                $totalLoss += $report->qty_rusak * (int)$report->product->harga_beli;
+            }
+        }
+
+        // Calculate total revenue from Completed outbound shipments
+        $totalRevenue = (int) OutboundDetail::whereHas('outbound', function ($q) {
+            $q->where('status', 'Completed');
+        })->sum('subtotal');
+
         // Overall stats counters
         $stats = [
             'total_produk' => Product::count(),
             'total_stok' => BatchInbound::sum('stok_sisa_batch'),
             'total_rak' => Rack::count(),
             'total_supplier' => Supplier::count(),
-            'karantina_count' => DamagedReport::count(),
+            'total_kerugian' => $totalLoss,
+            'total_pemasukan' => $totalRevenue,
+            'karantina_hari_ini' => DamagedReport::whereDate('created_at', $today)->count(),
             'barang_hampir_habis' => 0,
             'inbound_hari_ini' => BatchInbound::whereDate('created_at', $today)->sum('stok_awal_batch'),
             'outbound_hari_ini' => OutboundDetail::whereHas('outbound', fn($q) => $q->whereDate('tanggal_keluar', $today))->sum('qty_keluar'),
@@ -190,11 +245,9 @@ class DashboardController extends Controller
             'ordered' => PurchaseOrder::where('status', 'Ordered')->count(),
             'partial' => PurchaseOrder::where('status', 'Partially Received')->count(),
             'completed' => PurchaseOrder::where('status', 'Completed')->count(),
-            'damaged_today' => PoReceivingHistory::where('qty_rusak', '>', 0)->whereDate('received_at', Carbon::today())->sum('qty_rusak'),
-            'damaged_week' => PoReceivingHistory::where('qty_rusak', '>', 0)->where('received_at', '>=', Carbon::today()->startOfWeek())->sum('qty_rusak'),
-            'damaged_month' => PoReceivingHistory::where('qty_rusak', '>', 0)->whereMonth('received_at', Carbon::now()->month)->whereYear('received_at', Carbon::now()->year)->sum('qty_rusak'),
-            'menunggu_retur' => PoReceivingHistory::where('status_retur', 'Menunggu Retur')->count(),
-            'sudah_diretur' => PoReceivingHistory::where('status_retur', 'Sudah Diretur')->count(),
+            'damaged_today' => DamagedReport::where('status', '!=', 'Rejected')->whereDate('created_at', Carbon::today())->sum('qty_rusak'),
+            'damaged_week' => DamagedReport::where('status', '!=', 'Rejected')->where('created_at', '>=', Carbon::now()->subDays(6)->startOfDay())->sum('qty_rusak'),
+            'damaged_month' => DamagedReport::where('status', '!=', 'Rejected')->where('created_at', '>=', Carbon::now()->subDays(29)->startOfDay())->sum('qty_rusak'),
         ];
         // 6. Chart Data: Sales/Outbound (for Owner only)
         $userRole = auth()->user()->role;
@@ -202,18 +255,42 @@ class DashboardController extends Controller
         $chartMonthData = [];
         $chartWeekLabels = [];
         $chartWeekData = [];
+        $chartWeekDates = [];
         $chartTodayLabels = [];
         $chartTodayData = [];
+        $chartTodayDates = [];
         $chartThirtyLabels = [];
         $chartThirtyData = [];
+        $chartThirtyDates = [];
         $chartThreeMonthsLabels = [];
         $chartThreeMonthsData = [];
+        $chartThreeMonthsDates = [];
         $chartSixMonthsLabels = [];
         $chartSixMonthsData = [];
+        $chartSixMonthsDates = [];
         $chartYearLabels = [];
         $chartYearData = [];
+        $chartYearDates = [];
         $topSellingProducts = [];
         $slowMovingProducts = [];
+        $chartDmgTodayLabels = [];
+        $chartDmgTodayData = [];
+        $chartDmgTodayDates = [];
+        $chartDmgWeekLabels = [];
+        $chartDmgWeekData = [];
+        $chartDmgWeekDates = [];
+        $chartDmgThirtyLabels = [];
+        $chartDmgThirtyData = [];
+        $chartDmgThirtyDates = [];
+        $chartDmgThreeMonthsLabels = [];
+        $chartDmgThreeMonthsData = [];
+        $chartDmgThreeMonthsDates = [];
+        $chartDmgSixMonthsLabels = [];
+        $chartDmgSixMonthsData = [];
+        $chartDmgSixMonthsDates = [];
+        $chartDmgYearLabels = [];
+        $chartDmgYearData = [];
+        $chartDmgYearDates = [];
         $aiInsights = [];
 
         if ($userRole === 'owner') {
@@ -244,10 +321,12 @@ class DashboardController extends Controller
                 ->get();
 
             $weekGroups = [];
+            $chartWeekDates = [];
             for ($i = 6; $i >= 0; $i--) {
                 $dateStr = Carbon::now()->subDays($i)->format('Y-m-d');
                 $labelStr = Carbon::now()->subDays($i)->format('D, d M');
                 $weekGroups[$labelStr] = 0;
+                $chartWeekDates[] = $dateStr;
                 $found = $salesWeekly->firstWhere('date', $dateStr);
                 if ($found) {
                     $weekGroups[$labelStr] = (int)$found->total_qty;
@@ -270,8 +349,10 @@ class DashboardController extends Controller
                 ->get();
 
             $todayGroups = [];
+            $chartTodayDates = [];
             for ($h = 8; $h <= 18; $h++) {
                 $todayGroups[sprintf('%02d:00', $h)] = 0;
+                $chartTodayDates[] = Carbon::today()->format('Y-m-d');
             }
             foreach ($salesToday as $item) {
                 $hour = $item->hour . ':00';
@@ -291,10 +372,12 @@ class DashboardController extends Controller
                 ->get();
 
             $monthGroups = [];
+            $chartThirtyDates = [];
             for ($i = 29; $i >= 0; $i--) {
                 $dateStr = Carbon::now()->subDays($i)->format('Y-m-d');
                 $labelStr = Carbon::now()->subDays($i)->format('d M');
                 $monthGroups[$labelStr] = 0;
+                $chartThirtyDates[] = $dateStr;
                 $found = $salesThirty->firstWhere('date', $dateStr);
                 if ($found) {
                     $monthGroups[$labelStr] = (int)$found->total_qty;
@@ -312,10 +395,12 @@ class DashboardController extends Controller
                 ->get();
             
             $groups3M = [];
+            $chartThreeMonthsDates = [];
             for ($i = 12; $i >= 0; $i--) {
                 $wStart = Carbon::now()->subWeeks($i)->startOfWeek();
                 $label = 'W-' . $wStart->format('d M');
                 $groups3M[$label] = 0;
+                $chartThreeMonthsDates[] = $wStart->format('Y-m-d');
             }
             foreach ($sales3M as $item) {
                 $itemWStart = Carbon::parse($item->tanggal_keluar)->startOfWeek();
@@ -336,6 +421,7 @@ class DashboardController extends Controller
                 ->get();
             
             $groups6M = [];
+            $chartSixMonthsDates = [];
             $indonesianMonths = [
                 'January' => 'Jan', 'February' => 'Feb', 'March' => 'Mar', 'April' => 'Apr', 'May' => 'Mei', 'June' => 'Jun',
                 'July' => 'Jul', 'August' => 'Agu', 'September' => 'Sep', 'October' => 'Okt', 'November' => 'Nov', 'December' => 'Des'
@@ -346,6 +432,7 @@ class DashboardController extends Controller
                 $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
                 $label = $indoMonth . ' ' . $mStart->format('Y');
                 $groups6M[$label] = 0;
+                $chartSixMonthsDates[] = $mStart->format('Y-m');
             }
             foreach ($sales6M as $item) {
                 $itemMonth = Carbon::parse($item->tanggal_keluar)->startOfMonth();
@@ -368,12 +455,14 @@ class DashboardController extends Controller
                 ->get();
             
             $groups1Y = [];
+            $chartYearDates = [];
             for ($i = 11; $i >= 0; $i--) {
                 $mStart = Carbon::now()->subMonths($i)->startOfMonth();
                 $engMonth = $mStart->format('F');
                 $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
                 $label = $indoMonth . ' ' . $mStart->format('Y');
                 $groups1Y[$label] = 0;
+                $chartYearDates[] = $mStart->format('Y-m');
             }
             foreach ($sales1Y as $item) {
                 $itemMonth = Carbon::parse($item->tanggal_keluar)->startOfMonth();
@@ -387,57 +476,323 @@ class DashboardController extends Controller
             $chartYearLabels = array_keys($groups1Y);
             $chartYearData = array_values($groups1Y);
 
-            // Top 5 Best Selling Products (30 hari terakhir)
-            $topSelling = DB::table('t_outbound_details')
+            // Calculate DATEDIFF / days diff expression compatible with SQLite and MySQL
+            $daysDiffRaw = DB::getDriverName() === 'mysql'
+                ? 'DATEDIFF(t_outbounds.tanggal_keluar, t_batch_inbounds.created_at)'
+                : 'julianday(t_outbounds.tanggal_keluar) - julianday(date(t_batch_inbounds.created_at))';
+
+            // Query sales and average storage days in the last 30 days
+            $salesSpeedQuery = DB::table('t_outbound_details')
                 ->join('t_outbounds', 't_outbounds.id', '=', 't_outbound_details.outbound_id')
+                ->join('t_batch_inbounds', function ($join) {
+                    $join->on('t_batch_inbounds.batch_number', '=', 't_outbound_details.batch_number')
+                         ->on('t_batch_inbounds.produk_id', '=', 't_outbound_details.produk_id');
+                })
                 ->join('m_products', 'm_products.kode_produk', '=', 't_outbound_details.produk_id')
-                ->select('m_products.kode_produk', 'm_products.nama_produk', DB::raw('SUM(t_outbound_details.qty_keluar) as total_sold'))
+                ->select(
+                    'm_products.kode_produk',
+                    'm_products.nama_produk',
+                    DB::raw('SUM(t_outbound_details.qty_keluar) as total_sold'),
+                    DB::raw('SUM(t_outbound_details.qty_keluar * (CASE WHEN (' . $daysDiffRaw . ') < 0 THEN 0 ELSE (' . $daysDiffRaw . ') END)) as total_weighted_days')
+                )
+                ->where('t_outbounds.status', 'Completed')
                 ->where('t_outbounds.tanggal_keluar', '>=', Carbon::now()->subDays(30))
                 ->groupBy('m_products.kode_produk', 'm_products.nama_produk')
-                ->orderByDesc('total_sold')
-                ->limit(5)
                 ->get();
 
-            // Top 5 Slow Moving Products (30 hari terakhir, stok masih ada)
-            // Filter stok > 0 inside the subquery so SQLite doesn't choke on HAVING non-aggregate
-            $topSlowMoving = DB::table('m_products')
-                ->leftJoin(DB::raw('(SELECT produk_id, SUM(qty_keluar) as total_sold FROM t_outbound_details JOIN t_outbounds ON t_outbounds.id = t_outbound_details.outbound_id WHERE t_outbounds.tanggal_keluar >= \'' . Carbon::now()->subDays(30)->format('Y-m-d') . '\' GROUP BY produk_id) as sales'), 'm_products.kode_produk', '=', 'sales.produk_id')
-                ->join(DB::raw('(SELECT produk_id, SUM(stok_sisa_batch) as stok FROM t_batch_inbounds GROUP BY produk_id HAVING SUM(stok_sisa_batch) > 0) as stock'), 'm_products.kode_produk', '=', 'stock.produk_id')
-                ->select('m_products.kode_produk', 'm_products.nama_produk', DB::raw('COALESCE(sales.total_sold, 0) as total_sold'), DB::raw('stock.stok as stok_sisa'))
-                ->orderBy(DB::raw('COALESCE(sales.total_sold, 0)'))
-                ->limit(5)
+            // Store product sales details mapping by kode_produk
+            $salesMap = [];
+            foreach ($salesSpeedQuery as $item) {
+                $avgDays = $item->total_sold > 0 ? ($item->total_weighted_days / $item->total_sold) : 0;
+                $salesMap[$item->kode_produk] = [
+                    'kode' => $item->kode_produk,
+                    'nama' => $item->nama_produk,
+                    'total_sold' => (int)$item->total_sold,
+                    'avg_days' => round($avgDays, 1),
+                ];
+            }
+
+            // Query active stock and current age of unsold stock
+            $currentDateRaw = DB::getDriverName() === 'mysql'
+                ? 'DATEDIFF(NOW(), t_batch_inbounds.created_at)'
+                : 'julianday(\'now\') - julianday(date(t_batch_inbounds.created_at))';
+
+            $stockAgeQuery = DB::table('t_batch_inbounds')
+                ->join('m_products', 'm_products.kode_produk', '=', 't_batch_inbounds.produk_id')
+                ->select(
+                    'm_products.kode_produk',
+                    'm_products.nama_produk',
+                    DB::raw('SUM(t_batch_inbounds.stok_sisa_batch) as stok_sisa'),
+                    DB::raw('SUM(t_batch_inbounds.stok_sisa_batch * (CASE WHEN (' . $currentDateRaw . ') < 0 THEN 0 ELSE (' . $currentDateRaw . ') END)) as total_weighted_age_days')
+                )
+                ->where('t_batch_inbounds.stok_sisa_batch', '>', 0)
+                ->groupBy('m_products.kode_produk', 'm_products.nama_produk')
                 ->get();
 
-            // Find max for percentage bars
-            $maxTopSell = $topSelling->max('total_sold') ?: 1;
-            $maxSlowSell = $topSlowMoving->max('total_sold') ?: 1;
+            // Inflows: total received in the last 30 days per product (barang masuk)
+            $inbound30Query = DB::table('t_batch_inbounds')
+                ->select('produk_id', DB::raw('SUM(stok_awal_batch) as total_received'))
+                ->where('created_at', '>=', Carbon::now()->subDays(30))
+                ->groupBy('produk_id')
+                ->pluck('total_received', 'produk_id')
+                ->toArray();
 
-            foreach ($topSelling as $item) {
+            // Compile Fast Moving
+            $fastMovingCandidates = [];
+            foreach ($salesMap as $kode => $saleInfo) {
+                // Velocity score = sold / (avg_days_to_sell + 1)
+                $score = $saleInfo['total_sold'] / ($saleInfo['avg_days'] + 1);
+                $totalReceived = $inbound30Query[$kode] ?? 0;
+
+                $fastMovingCandidates[] = [
+                    'kode' => $kode,
+                    'nama' => $saleInfo['nama'],
+                    'total_sold' => $saleInfo['total_sold'],
+                    'total_received' => (int)$totalReceived,
+                    'avg_days' => $saleInfo['avg_days'],
+                    'score' => $score,
+                ];
+            }
+
+            usort($fastMovingCandidates, fn($a, $b) => $b['score'] <=> $a['score']);
+            $fastMovingCandidates = array_slice($fastMovingCandidates, 0, 5);
+
+            $maxScore = !empty($fastMovingCandidates) ? max(array_column($fastMovingCandidates, 'score')) : 1;
+            if ($maxScore <= 0) $maxScore = 1;
+
+            $topSellingProducts = [];
+            foreach ($fastMovingCandidates as $item) {
                 $topSellingProducts[] = [
-                    'kode' => $item->kode_produk,
-                    'nama' => $item->nama_produk,
-                    'total_sold' => (int)$item->total_sold,
-                    'percentage' => round(($item->total_sold / $maxTopSell) * 100),
+                    'kode' => $item['kode'],
+                    'nama' => $item['nama'],
+                    'total_sold' => $item['total_sold'],
+                    'total_received' => $item['total_received'],
+                    'avg_days' => $item['avg_days'],
+                    'percentage' => round(($item['score'] / $maxScore) * 100),
                 ];
             }
 
-            // No fallback — empty array will trigger empty-state in the view
+            // Compile Slow Moving
+            $slowMovingCandidates = [];
+            foreach ($stockAgeQuery as $stockInfo) {
+                $kode = $stockInfo->kode_produk;
+                $stokSisa = (int)$stockInfo->stok_sisa;
 
-            foreach ($topSlowMoving as $item) {
+                $hasSales = isset($salesMap[$kode]);
+                $totalSold = $hasSales ? $salesMap[$kode]['total_sold'] : 0;
+
+                if ($hasSales) {
+                    $ageDays = $salesMap[$kode]['avg_days'];
+                    $statusLabel = "Rata-rata Terjual: {$ageDays} Hari";
+                    $sortAge = $ageDays;
+                } else {
+                    $avgAge = $stockInfo->stok_sisa > 0 ? ($stockInfo->total_weighted_age_days / $stockInfo->stok_sisa) : 0;
+                    $ageDays = round($avgAge, 1);
+                    $statusLabel = "Belum Terjual > {$ageDays} Hari";
+                    $sortAge = $ageDays + 100; // Rank unsold stock higher
+                }
+
+                $slowMovingCandidates[] = [
+                    'kode' => $kode,
+                    'nama' => $stockInfo->nama_produk,
+                    'total_sold' => $totalSold,
+                    'stok_sisa' => $stokSisa,
+                    'age_days' => $ageDays,
+                    'status_label' => $statusLabel,
+                    'sort_age' => $sortAge,
+                ];
+            }
+
+            usort($slowMovingCandidates, fn($a, $b) => $b['sort_age'] <=> $a['sort_age']);
+            $slowMovingCandidates = array_slice($slowMovingCandidates, 0, 5);
+
+            $maxAge = !empty($slowMovingCandidates) ? max(array_column($slowMovingCandidates, 'sort_age')) : 1;
+            if ($maxAge <= 0) $maxAge = 1;
+
+            $slowMovingProducts = [];
+            foreach ($slowMovingCandidates as $item) {
                 $slowMovingProducts[] = [
-                    'kode' => $item->kode_produk,
-                    'nama' => $item->nama_produk,
-                    'total_sold' => (int)$item->total_sold,
-                    'stok_sisa' => (int)$item->stok_sisa,
-                    'percentage' => $maxSlowSell > 0 ? round(($item->total_sold / $maxSlowSell) * 100) : 0,
+                    'kode' => $item['kode'],
+                    'nama' => $item['nama'],
+                    'total_sold' => $item['total_sold'],
+                    'stok_sisa' => $item['stok_sisa'],
+                    'age_days' => $item['age_days'],
+                    'status_label' => $item['status_label'],
+                    'percentage' => round(($item['sort_age'] / $maxAge) * 100),
                 ];
             }
 
-            // No fallback — empty array will trigger empty-state in the view
+            // --- Damaged Items Chart Data ---
+            // 1. Today (per hour)
+            $dmgHourSelect = DB::getDriverName() === 'mysql'
+                ? 'DATE_FORMAT(created_at, "%H") as hour'
+                : 'STRFTIME(\'%H\', created_at) as hour';
+
+            $damagedToday = DB::table('t_damaged_reports')
+                ->select(DB::raw($dmgHourSelect), DB::raw('SUM(qty_rusak) as total_qty'))
+                ->whereIn('status', ['Approved', 'Destruction Assigned'])
+                ->whereDate('created_at', Carbon::today())
+                ->groupBy('hour')
+                ->orderBy('hour')
+                ->get();
+
+            $dmgTodayGroups = [];
+            $chartDmgTodayDates = [];
+            for ($h = 8; $h <= 18; $h++) {
+                $dmgTodayGroups[sprintf('%02d:00', $h)] = 0;
+                $chartDmgTodayDates[] = Carbon::today()->format('Y-m-d');
+            }
+            foreach ($damagedToday as $item) {
+                $hour = $item->hour . ':00';
+                if (isset($dmgTodayGroups[$hour])) {
+                    $dmgTodayGroups[$hour] = (int)$item->total_qty;
+                }
+            }
+            $chartDmgTodayLabels = array_keys($dmgTodayGroups);
+            $chartDmgTodayData = array_values($dmgTodayGroups);
+
+            // 2. Weekly (7 hari terakhir)
+            $dmgWeekStart = Carbon::now()->subDays(6)->startOfDay();
+            $damagedWeekly = DB::table('t_damaged_reports')
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_rusak) as total_qty'))
+                ->whereIn('status', ['Approved', 'Destruction Assigned'])
+                ->where('created_at', '>=', $dmgWeekStart)
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+
+            $dmgWeekGroups = [];
+            $chartDmgWeekDates = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $dateStr = Carbon::now()->subDays($i)->format('Y-m-d');
+                $labelStr = Carbon::now()->subDays($i)->format('D, d M');
+                $dmgWeekGroups[$labelStr] = 0;
+                $chartDmgWeekDates[] = $dateStr;
+                $found = $damagedWeekly->firstWhere('date', $dateStr);
+                if ($found) {
+                    $dmgWeekGroups[$labelStr] = (int)$found->total_qty;
+                }
+            }
+            $chartDmgWeekLabels = array_keys($dmgWeekGroups);
+            $chartDmgWeekData = array_values($dmgWeekGroups);
+
+            // 3. 30 Hari Terakhir (1 Bulan)
+            $dmgThirtyDaysStart = Carbon::now()->subDays(29)->startOfDay();
+            $damagedThirty = DB::table('t_damaged_reports')
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_rusak) as total_qty'))
+                ->whereIn('status', ['Approved', 'Destruction Assigned'])
+                ->where('created_at', '>=', $dmgThirtyDaysStart)
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+
+            $dmgMonthGroups = [];
+            $chartDmgThirtyDates = [];
+            for ($i = 29; $i >= 0; $i--) {
+                $dateStr = Carbon::now()->subDays($i)->format('Y-m-d');
+                $labelStr = Carbon::now()->subDays($i)->format('d M');
+                $dmgMonthGroups[$labelStr] = 0;
+                $chartDmgThirtyDates[] = $dateStr;
+                $found = $damagedThirty->firstWhere('date', $dateStr);
+                if ($found) {
+                    $dmgMonthGroups[$labelStr] = (int)$found->total_qty;
+                }
+            }
+            $chartDmgThirtyLabels = array_keys($dmgMonthGroups);
+            $chartDmgThirtyData = array_values($dmgMonthGroups);
+
+            // 4. 3 Bulan (90 hari terakhir, grouped by week)
+            $dmgThreeMonthsStart = Carbon::now()->subDays(89)->startOfDay();
+            $damaged3M = DB::table('t_damaged_reports')
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_rusak) as total_qty'))
+                ->whereIn('status', ['Approved', 'Destruction Assigned'])
+                ->where('created_at', '>=', $dmgThreeMonthsStart)
+                ->groupBy('date')
+                ->get();
+
+            $dmgGroups3M = [];
+            $chartDmgThreeMonthsDates = [];
+            for ($i = 12; $i >= 0; $i--) {
+                $wStart = Carbon::now()->subWeeks($i)->startOfWeek();
+                $label = 'W-' . $wStart->format('d M');
+                $dmgGroups3M[$label] = 0;
+                $chartDmgThreeMonthsDates[] = $wStart->format('Y-m-d');
+            }
+            foreach ($damaged3M as $item) {
+                $itemWStart = Carbon::parse($item->date)->startOfWeek();
+                $label = 'W-' . $itemWStart->format('d M');
+                if (isset($dmgGroups3M[$label])) {
+                    $dmgGroups3M[$label] += (int)$item->total_qty;
+                }
+            }
+            $chartDmgThreeMonthsLabels = array_keys($dmgGroups3M);
+            $chartDmgThreeMonthsData = array_values($dmgGroups3M);
+
+            // 5. 6 Bulan (180 hari terakhir, grouped by month)
+            $dmgSixMonthsStart = Carbon::now()->subMonths(5)->startOfMonth();
+            $damaged6M = DB::table('t_damaged_reports')
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_rusak) as total_qty'))
+                ->whereIn('status', ['Approved', 'Destruction Assigned'])
+                ->where('created_at', '>=', $dmgSixMonthsStart)
+                ->groupBy('date')
+                ->get();
+
+            $dmgGroups6M = [];
+            $chartDmgSixMonthsDates = [];
+            for ($i = 5; $i >= 0; $i--) {
+                $mStart = Carbon::now()->subMonths($i)->startOfMonth();
+                $engMonth = $mStart->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $mStart->format('Y');
+                $dmgGroups6M[$label] = 0;
+                $chartDmgSixMonthsDates[] = $mStart->format('Y-m');
+            }
+            foreach ($damaged6M as $item) {
+                $itemMonth = Carbon::parse($item->date)->startOfMonth();
+                $engMonth = $itemMonth->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $itemMonth->format('Y');
+                if (isset($dmgGroups6M[$label])) {
+                    $dmgGroups6M[$label] += (int)$item->total_qty;
+                }
+            }
+            $chartDmgSixMonthsLabels = array_keys($dmgGroups6M);
+            $chartDmgSixMonthsData = array_values($dmgGroups6M);
+
+            // 6. 1 Tahun (365 hari terakhir, grouped by month)
+            $dmgOneYearStart = Carbon::now()->subMonths(11)->startOfMonth();
+            $damaged1Y = DB::table('t_damaged_reports')
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_rusak) as total_qty'))
+                ->whereIn('status', ['Approved', 'Destruction Assigned'])
+                ->where('created_at', '>=', $dmgOneYearStart)
+                ->groupBy('date')
+                ->get();
+
+            $dmgGroups1Y = [];
+            $chartDmgYearDates = [];
+            for ($i = 11; $i >= 0; $i--) {
+                $mStart = Carbon::now()->subMonths($i)->startOfMonth();
+                $engMonth = $mStart->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $mStart->format('Y');
+                $dmgGroups1Y[$label] = 0;
+                $chartDmgYearDates[] = $mStart->format('Y-m');
+            }
+            foreach ($damaged1Y as $item) {
+                $itemMonth = Carbon::parse($item->date)->startOfMonth();
+                $engMonth = $itemMonth->format('F');
+                $indoMonth = $indonesianMonths[$engMonth] ?? $engMonth;
+                $label = $indoMonth . ' ' . $itemMonth->format('Y');
+                if (isset($dmgGroups1Y[$label])) {
+                    $dmgGroups1Y[$label] += (int)$item->total_qty;
+                }
+            }
+            $chartDmgYearLabels = array_keys($dmgGroups1Y);
+            $chartDmgYearData = array_values($dmgGroups1Y);
 
             // AI Insights Generation
-            $criticalRestockItems = array_filter($restockForecasts, fn($f) => $f['status'] === 'Kritis (Di bawah Stok Minimum)');
-            $warningRestockItems = array_filter($restockForecasts, fn($f) => $f['status'] === 'Peringatan (Mendekati Reorder Point)');
+            $criticalRestockItems = array_filter($restockForecasts, fn($f) => $f['status'] === 'Kritis');
+            $warningRestockItems = array_filter($restockForecasts, fn($f) => $f['status'] === 'Peringatan');
 
             if (!empty($criticalRestockItems)) {
                 $names = implode(', ', array_map(fn($f) => $f['nama'], array_slice($criticalRestockItems, 0, 2)));
@@ -476,6 +831,7 @@ class DashboardController extends Controller
             'supplierRankings',
             'restockForecasts',
             'expiredBatches',
+            'alreadyExpiredBatches',
             'errorsDetected',
             'stats',
             'poStats',
@@ -483,16 +839,40 @@ class DashboardController extends Controller
             'chartMonthData',
             'chartWeekLabels',
             'chartWeekData',
+            'chartWeekDates',
             'chartTodayLabels',
             'chartTodayData',
+            'chartTodayDates',
             'chartThirtyLabels',
             'chartThirtyData',
+            'chartThirtyDates',
             'chartThreeMonthsLabels',
             'chartThreeMonthsData',
+            'chartThreeMonthsDates',
             'chartSixMonthsLabels',
             'chartSixMonthsData',
+            'chartSixMonthsDates',
             'chartYearLabels',
             'chartYearData',
+            'chartYearDates',
+            'chartDmgTodayLabels',
+            'chartDmgTodayData',
+            'chartDmgTodayDates',
+            'chartDmgWeekLabels',
+            'chartDmgWeekData',
+            'chartDmgWeekDates',
+            'chartDmgThirtyLabels',
+            'chartDmgThirtyData',
+            'chartDmgThirtyDates',
+            'chartDmgThreeMonthsLabels',
+            'chartDmgThreeMonthsData',
+            'chartDmgThreeMonthsDates',
+            'chartDmgSixMonthsLabels',
+            'chartDmgSixMonthsData',
+            'chartDmgSixMonthsDates',
+            'chartDmgYearLabels',
+            'chartDmgYearData',
+            'chartDmgYearDates',
             'topSellingProducts',
             'slowMovingProducts',
             'aiInsights',
@@ -502,6 +882,8 @@ class DashboardController extends Controller
 
     public function restockFilter(Request $request)
     {
+        abort_if(auth()->user()->role === 'staff_gudang', 403, 'Akses Ditolak.');
+
         $filter = $request->input('filter', 'semua');
         $search = $request->input('search', '');
         $thirtyDaysAgo = Carbon::today()->subDays(30);

@@ -11,6 +11,37 @@
         @endif
     </div>
 
+    {{-- Filter & Period Selector --}}
+    <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1rem 1.5rem;">
+        <form method="GET" action="{{ route('po.index') }}" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase;">Filter Status</label>
+                <select name="status" onchange="this.form.submit()" style="width: 100%; padding: 0.6rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.375rem; color: var(--text-primary); outline: none;">
+                    <option value="">Semua Status</option>
+                    <option value="Draft" {{ request('status') === 'Draft' ? 'selected' : '' }}>Draft</option>
+                    <option value="Ordered" {{ request('status') === 'Ordered' ? 'selected' : '' }}>Ordered</option>
+                    <option value="Partially Received" {{ request('status') === 'Partially Received' ? 'selected' : '' }}>Partially Received</option>
+                    <option value="Completed" {{ request('status') === 'Completed' ? 'selected' : '' }}>Completed</option>
+                    <option value="Cancelled" {{ request('status') === 'Cancelled' ? 'selected' : '' }}>Cancelled</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase;">Periode Pembuatan</label>
+                <select name="period" onchange="this.form.submit()" style="width: 100%; padding: 0.6rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.375rem; color: var(--text-primary); outline: none;">
+                    <option value="">Semua</option>
+                    <option value="today" {{ request('period') === 'today' ? 'selected' : '' }}>Hari Ini</option>
+                    <option value="week" {{ request('period') === 'week' ? 'selected' : '' }}>Minggu Ini</option>
+                    <option value="month" {{ request('period') === 'month' ? 'selected' : '' }}>Bulan Ini</option>
+                    <option value="year" {{ request('period') === 'year' ? 'selected' : '' }}>Tahun Ini</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase;">Tanggal Spesifik</label>
+                <input type="date" name="date" class="form-control" value="{{ request('date') }}" onchange="this.form.submit()" style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.375rem; color: var(--text-primary); outline: none; min-height: 38px;">
+            </div>
+        </form>
+    </div>
+
     <div class="glass-card">
         <div class="table-responsive">
             <table class="table-premium">
@@ -83,5 +114,22 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const periodSelect = document.querySelector('select[name="period"]');
+            const dateInput = document.querySelector('input[name="date"]');
+            if (periodSelect && dateInput) {
+                periodSelect.addEventListener('change', function() {
+                    if (periodSelect.value !== '') {
+                        dateInput.value = '';
+                    }
+                });
+                dateInput.addEventListener('change', function() {
+                    if (dateInput.value !== '') {
+                        periodSelect.value = '';
+                    }
+                });
+            }
+        });
+    </script>
 </x-app-layout>

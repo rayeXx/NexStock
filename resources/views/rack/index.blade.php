@@ -4,9 +4,11 @@
             <h1>Master Data Lokasi Rak</h1>
             <p>Kelola kapasitas volume rak pergudangan dinamis dan monitor sisa ruang kosong.</p>
         </div>
+        @if(auth()->user()->role !== 'owner')
         <a href="{{ route('rack.create') }}" class="btn btn-primary">
             + Tambah Rak Baru
         </a>
+        @endif
     </div>
 
     <div class="glass-card" style="max-width: 900px;">
@@ -19,7 +21,9 @@
                         <th>Kapasitas Terpakai</th>
                         <th>Sisa Ruang Kosong</th>
                         <th>Tingkat Kepadatan Rak</th>
+                        @if(auth()->user()->role !== 'owner')
                         <th>Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -49,6 +53,7 @@
                                     <span class="badge {{ $badgeClass }}">{{ $percentage }}%</span>
                                 </div>
                             </td>
+                            @if(auth()->user()->role !== 'owner')
                             <td>
                                 <div style="display: flex; gap: 0.5rem;">
                                     <a href="{{ route('rack.edit', $rack->kode_rak) }}" class="btn btn-secondary" style="padding: 6px 12px; min-height:36px; min-width:36px; font-size: 0.85rem;">
@@ -63,6 +68,7 @@
                                     </form>
                                 </div>
                             </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>

@@ -63,9 +63,35 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="stok_minimum">Batas Minimum Stok *</label>
-                    <input type="number" name="stok_minimum" id="stok_minimum" class="form-control" min="0" placeholder="Contoh: 20" value="{{ old('stok_minimum', 10) }}" required>
+                    <label class="form-label" for="harga_jual">Harga Jual (Rp)</label>
+                    <input type="number" id="harga_jual" class="form-control" value="0" disabled style="opacity: 0.6; cursor: not-allowed;">
+                    <p style="font-size: 0.75rem; margin-top: 0.25rem; color: var(--text-muted);">Diatur khusus oleh Owner setelah produk terdaftar.</p>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="stok_minimum">Batas Minimum Stok *</label>
+                <input type="number" name="stok_minimum" id="stok_minimum" class="form-control" min="0" placeholder="Contoh: 20" value="{{ old('stok_minimum', 10) }}" required>
+            </div>
+
+            <div style="background: rgba(56, 189, 248, 0.04); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1.25rem;">
+                <h4 style="font-size: 0.9rem; color: var(--accent-blue); font-weight: 600; margin-bottom: 0.75rem;">📅 Automated Expiry Discount Template</h4>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Tentukan persentase diskon otomatis (0-100%) yang akan diterapkan saat pengiriman batch berdasarkan sisa umur expired.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="diskon_bawah_1_tahun">Sisa < 1 Tahun (%)</label>
+                        <input type="number" id="diskon_bawah_1_tahun" class="form-control" value="0" disabled style="opacity: 0.6; cursor: not-allowed;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="diskon_bawah_6_bulan">Sisa < 6 Bulan (%)</label>
+                        <input type="number" id="diskon_bawah_6_bulan" class="form-control" value="0" disabled style="opacity: 0.6; cursor: not-allowed;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="diskon_bawah_3_bulan">Sisa < 3 Bulan (%)</label>
+                        <input type="number" id="diskon_bawah_3_bulan" class="form-control" value="0" disabled style="opacity: 0.6; cursor: not-allowed;">
+                    </div>
+                </div>
+                <p style="font-size: 0.75rem; margin-top: 0.5rem; color: var(--text-muted); margin-bottom: 0;">Diatur khusus oleh Owner setelah produk terdaftar.</p>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">

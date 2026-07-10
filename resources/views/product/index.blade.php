@@ -41,13 +41,15 @@
                         <th>Nama Produk</th>
                         <th>Kategori</th>
                         <th>Harga Beli</th>
+                        <th>Harga Jual</th>
+                        @if(auth()->user()->role === 'owner')
+                            <th>Keuntungan (Margin)</th>
+                        @endif
                         <th>Stok Minimum</th>
                         <th>UOM (Satuan)</th>
                         <th>Stok Saat Ini</th>
                         <th>Status</th>
-                        @if(auth()->user()->role !== 'owner')
                         <th>Aksi</th>
-                        @endif
                     </tr>
                 </thead>
                 <tbody id="productTableBody">

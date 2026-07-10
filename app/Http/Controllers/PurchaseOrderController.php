@@ -16,9 +16,44 @@ use Carbon\Carbon;
 class PurchaseOrderController extends Controller
 {
     // List all POs
-    public function index()
+    public function index(Request $request)
     {
-        $purchaseOrders = PurchaseOrder::with(['supplier', 'creator'])->orderBy('created_at', 'desc')->get();
+        $query = PurchaseOrder::with(['supplier', 'creator']);
+
+        if ($request->filled('status')) {
+            $status = $request->status;
+            if (strtolower($status) === 'partial') {
+                $status = 'Partially Received';
+            }
+            $query->where('status', $status);
+        }
+
+        if ($request->filled('period')) {
+            switch ($request->period) {
+                case 'today':
+                    $query->whereDate('created_at', Carbon::today());
+                    break;
+                case 'week':
+                    $query->whereBetween('created_at', [
+                        Carbon::now()->startOfWeek(), 
+                        Carbon::now()->endOfWeek()
+                    ]);
+                    break;
+                case 'month':
+                    $query->whereMonth('created_at', Carbon::now()->month)
+                          ->whereYear('created_at', Carbon::now()->year);
+                    break;
+                case 'year':
+                    $query->whereYear('created_at', Carbon::now()->year);
+                    break;
+            }
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        $purchaseOrders = $query->orderBy('created_at', 'desc')->get();
         return view('po.index', compact('purchaseOrders'));
     }
 

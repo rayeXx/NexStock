@@ -8,20 +8,19 @@
     </div>
 
     @if(count($batches) === 0)
-        <div class="glass-card" style="text-align: center; padding: 3rem; max-width: 500px;">
+        <div class="glass-card" style="text-align: center; padding: 3rem; max-width: 100%;">
             <p style="font-size: 1.1rem; margin-bottom: 0;">Tidak ada batch aktif untuk diaudit saat ini.</p>
         </div>
     @else
-        <div class="instruction-box" style="max-width: 900px;">
-            <h4>Panduan Stock Opname (FR-04)</h4>
+        <div class="instruction-box" style="max-width: 100%;">
+            <h4>Panduan Stock Opname</h4>
             <ol>
                 <li>Hitung stok fisik setiap batch di rak gudang secara aktual.</li>
                 <li>Masukkan angka hasil hitungan di kolom <strong>"Qty Fisik"</strong> tanpa melihat angka sistem.</li>
-                <li>Hasil audit akan diajukan ke Owner / Admin untuk disahkan sebelum stok sistem diperbarui.</li>
             </ol>
         </div>
 
-        <div class="glass-card" style="max-width: 900px;">
+        <div class="glass-card" style="max-width: 100%;">
             <form action="{{ route('opname.store') }}" method="POST">
                 @csrf
                 <div class="table-responsive">

@@ -16,6 +16,9 @@ class OutboundDetail extends Model
         'qty_keluar',
         'rak_id',
         'batch_scanned',
+        'harga_satuan_final',
+        'persentase_diskon',
+        'subtotal',
     ];
 
     public function outbound(): BelongsTo

@@ -13,6 +13,8 @@ class Outbound extends Model
         'outbound_number',
         'tujuan',
         'tanggal_keluar',
+        'status',
+        'bukti_foto',
     ];
 
     protected $casts = [
